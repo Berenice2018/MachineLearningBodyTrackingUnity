@@ -1,11 +1,9 @@
 ﻿using UnityEngine;
-using UnityEngine.UI;
 using UnityEngine.Video;
+using UnityEngine.Experimental.Rendering; // For GraphicsFormat & FormatUsage
 
 public class VideoCapture : MonoBehaviour
 {
-    //public GameObject InputTexture;
-    //public RawImage VideoScreen;
     public GameObject VideoBackground;
     public float VideoBackgroundScale;
     public LayerMask _layer;
@@ -15,46 +13,45 @@ public class VideoCapture : MonoBehaviour
 
     private WebCamTexture webCamTexture;
     private RenderTexture videoTexture;
+    private GraphicsFormat mainGraphicsFormat;
 
     private int videoScreenWidth = 2560;
     private int bgWidth, bgHeight;
 
     public RenderTexture MainTexture { get; private set; }
 
-    /// <summary>
-    /// Initialize Camera
-    /// </summary>
-    /// <param name="bgWidth"></param>
-    /// <param name="bgHeight"></param>
+    private void Awake()
+    {
+        // Detect format support only once
+        GraphicsFormat preferred = GraphicsFormat.B5G6R5_UNormPack16; // maps to RGB565
+        if (!SystemInfo.IsFormatSupported(preferred, FormatUsage.Render))
+        {
+            Debug.LogWarning($"{preferred} not supported on this platform. Falling back to R8G8B8A8_UNorm.");
+            preferred = GraphicsFormat.R8G8B8A8_UNorm;
+        }
+        mainGraphicsFormat = preferred;
+    }
+
     public void Init(int bgWidth, int bgHeight)
     {
         this.bgWidth = bgWidth;
         this.bgHeight = bgHeight;
 
-        //aca inicia y arranca y se determina si usar camara web o video
         if (UseWebCam) CameraPlayStart();
         else VideoPlayStart();
     }
 
-    /// <summary>
-    /// Play Web Camera
-    /// </summary>
     public void CameraPlayStart()
     {
         WebCamDevice[] devices = WebCamTexture.devices;
-        if(devices.Length <= WebCamIndex)
+        if (devices.Length <= WebCamIndex)
         {
             WebCamIndex = 0;
         }
-        
+
         webCamTexture = new WebCamTexture(devices[WebCamIndex].name);
-
-        //var sd = VideoScreen.GetComponent<RectTransform>();
-        //VideoScreen.texture = webCamTexture;
-
         webCamTexture.Play();
 
-        //sd.sizeDelta = new Vector2(videoScreenWidth, videoScreenWidth * webCamTexture.height / webCamTexture.width);
         var aspect = (float)webCamTexture.width / webCamTexture.height;
         VideoBackground.transform.localScale = new Vector3(aspect, 1, 1) * VideoBackgroundScale;
         VideoBackground.GetComponent<Renderer>().material.mainTexture = webCamTexture;
@@ -62,33 +59,33 @@ public class VideoCapture : MonoBehaviour
         InitMainTexture();
     }
 
-    /// <summary>
-    /// Play video
-    /// </summary>
     public void VideoPlayStart()
     {
-        videoTexture = new RenderTexture((int)VideoPlayer.clip.width, (int)VideoPlayer.clip.height, 24);
+        var desc = new RenderTextureDescriptor(
+            (int)VideoPlayer.clip.width,
+            (int)VideoPlayer.clip.height
+        )
+        {
+            depthBufferBits = 24,
+            graphicsFormat = mainGraphicsFormat,
+            msaaSamples = 1,
+            mipCount = 1,
+            sRGB = true
+        };
+
+        videoTexture = new RenderTexture(desc);
 
         VideoPlayer.renderMode = VideoRenderMode.RenderTexture;
         VideoPlayer.targetTexture = videoTexture;
-
-        //var sd = VideoScreen.GetComponent<RectTransform>();
-        //sd.sizeDelta = new Vector2(videoScreenWidth, (int)(videoScreenWidth * VideoPlayer.clip.height / VideoPlayer.clip.width));
-        //VideoScreen.texture = videoTexture;
-
         VideoPlayer.Play();
 
         var aspect = (float)videoTexture.width / videoTexture.height;
-
         VideoBackground.transform.localScale = new Vector3(aspect, 1, 1) * VideoBackgroundScale;
         VideoBackground.GetComponent<Renderer>().material.mainTexture = videoTexture;
 
         InitMainTexture();
     }
 
-    /// <summary>
-    /// Initialize Main Texture
-    /// </summary>
     private void InitMainTexture()
     {
         GameObject go = new GameObject("MainTextureCamera", typeof(Camera));
@@ -101,9 +98,9 @@ public class VideoCapture : MonoBehaviour
 
         var camera = go.GetComponent<Camera>();
         camera.orthographic = true;
-        camera.orthographicSize = 0.5f ;
+        camera.orthographicSize = 0.5f;
         camera.depth = -5;
-        camera.depthTextureMode = 0;
+        camera.depthTextureMode = DepthTextureMode.None;
         camera.clearFlags = CameraClearFlags.Color;
         camera.backgroundColor = Color.black;
         camera.cullingMask = _layer;
@@ -113,7 +110,16 @@ public class VideoCapture : MonoBehaviour
         camera.allowMSAA = false;
         camera.allowHDR = false;
 
-        MainTexture = new RenderTexture(bgWidth, bgHeight, 0, RenderTextureFormat.RGB565, RenderTextureReadWrite.sRGB)
+        var desc = new RenderTextureDescriptor(bgWidth, bgHeight)
+        {
+            depthBufferBits = 0,
+            graphicsFormat = mainGraphicsFormat,
+            msaaSamples = 1,
+            mipCount = 1,
+            sRGB = true
+        };
+
+        MainTexture = new RenderTexture(desc)
         {
             useMipMap = false,
             autoGenerateMips = false,
@@ -122,6 +128,5 @@ public class VideoCapture : MonoBehaviour
         };
 
         camera.targetTexture = MainTexture;
-        //if (InputTexture.activeSelf) InputTexture.GetComponent<Renderer>().material.mainTexture = MainTexture;
     }
 }
