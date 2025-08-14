@@ -28,7 +28,7 @@ public class VNectBarracudaRunner : MonoBehaviour
     /// <summary>
     /// Coordinates of joint points
     /// </summary>
-    private VNectModel.JointPoint[] jointPoints;
+    private VNectModel.JointPoint[] _jointPoints;
     
     /// <summary>
     /// Number of joint points
@@ -49,38 +49,38 @@ public class VNectBarracudaRunner : MonoBehaviour
     /// column number of heatmap
     /// </summary>
     public int HeatMapCol;
-    private float InputImageSizeF;
+    private float _inputImageSizeF;
 
     /// <summary>
     /// Column number of heatmap in 2D image
     /// </summary>
-    private int HeatMapCol_Squared;
+    private int _heatMapCol_Squared;
     
     /// <summary>
     /// Column nuber of heatmap in 3D model
     /// </summary>
-    private int HeatMapCol_Cube;
-    private float ImageScale;
+    private int _heatMapCol_Cube;
+    private float _imageScale;
 
     /// <summary>
     /// Buffer memory has 2D heat map
     /// </summary>
-    private float[] heatMap2D;
+    private float[] _heatMap2D;
 
     /// <summary>
     /// Buffer memory has offset 2D
     /// </summary>
-    private float[] offset2D;
+    private float[] _offset2D;
     
     /// <summary>
     /// Buffer memory has 3D heat map
     /// </summary>
-    private float[] heatMap3D;
+    private float[] _heatMap3D;
     
     /// <summary>
     /// Buffer memory hash 3D offset
     /// </summary>
-    private float[] offset3D;
+    private float[] _offset3D;
     private float unit;
     
     /// <summary>
@@ -141,20 +141,20 @@ public class VNectBarracudaRunner : MonoBehaviour
     private void Start()
     {
         // Initialize 
-        HeatMapCol_Squared = HeatMapCol * HeatMapCol;
-        HeatMapCol_Cube = HeatMapCol * HeatMapCol * HeatMapCol;
+        _heatMapCol_Squared = HeatMapCol * HeatMapCol;
+        _heatMapCol_Cube = HeatMapCol * HeatMapCol * HeatMapCol;
         HeatMapCol_JointNum = HeatMapCol * JointNum;
         CubeOffsetLinear = HeatMapCol * JointNum_Cube;
-        CubeOffsetSquared = HeatMapCol_Squared * JointNum_Cube;
+        CubeOffsetSquared = _heatMapCol_Squared * JointNum_Cube;
 
-        heatMap2D = new float[JointNum * HeatMapCol_Squared];
-        offset2D = new float[JointNum * HeatMapCol_Squared * 2];
-        heatMap3D = new float[JointNum * HeatMapCol_Cube];
-        offset3D = new float[JointNum * HeatMapCol_Cube * 3];
+        _heatMap2D = new float[JointNum * _heatMapCol_Squared];
+        _offset2D = new float[JointNum * _heatMapCol_Squared * 2];
+        _heatMap3D = new float[JointNum * _heatMapCol_Cube];
+        _offset3D = new float[JointNum * _heatMapCol_Cube * 3];
         unit = 1f / (float)HeatMapCol;
-        InputImageSizeF = InputImageSize;
-        InputImageSizeHalf = InputImageSizeF / 2f;
-        ImageScale = InputImageSize / (float)HeatMapCol;// 224f / (float)InputImageSize;
+        _inputImageSizeF = InputImageSize;
+        InputImageSizeHalf = _inputImageSizeF / 2f;
+        _imageScale = InputImageSize / (float)HeatMapCol;// 224f / (float)InputImageSize;
 
         // Disabel sleep
         Screen.sleepTimeout = SleepTimeout.NeverSleep;
@@ -185,12 +185,12 @@ public class VNectBarracudaRunner : MonoBehaviour
 
     private IEnumerator WaitLoad()
     {
-        inputs[inputName_1] = MakeRGBInputTensor(InitImg);
-        inputs[inputName_2] = MakeRGBInputTensor(InitImg);
-        inputs[inputName_3] = MakeRGBInputTensor(InitImg);
+        _inputs[inputName_1] = MakeRGBInputTensor(InitImg);
+        _inputs[inputName_2] = MakeRGBInputTensor(InitImg);
+        _inputs[inputName_3] = MakeRGBInputTensor(InitImg);
 
         // Create input and Execute model
-        yield return _worker.StartManualSchedule(inputs);
+        yield return _worker.StartManualSchedule(_inputs);
 
         // Get outputs
         for (var i = 2; i < _model.outputs.Count; i++)
@@ -199,8 +199,8 @@ public class VNectBarracudaRunner : MonoBehaviour
         }
 
         // Get data from outputs
-        offset3D = b_outputs[2].data.Download(b_outputs[2].shape);
-        heatMap3D = b_outputs[3].data.Download(b_outputs[3].shape);
+        _offset3D = b_outputs[2].data.Download(b_outputs[2].shape);
+        _heatMap3D = b_outputs[3].data.Download(b_outputs[3].shape);
 
         // Release outputs
         for (var i = 2; i < b_outputs.Length; i++)
@@ -209,7 +209,7 @@ public class VNectBarracudaRunner : MonoBehaviour
         }
 
         // Init VNect model
-        jointPoints = VNectModel.Init();
+        _jointPoints = VNectModel.Init();
 
         PredictPose();
 
@@ -220,15 +220,17 @@ public class VNectBarracudaRunner : MonoBehaviour
         Lock = false;
         //Msg.gameObject.SetActive(false);
     }
+    
+    bool _executing;
 
-    // Add this helper:
-    private Tensor MakeRGBInputTensor(Texture tex)
+    static void DisposeAndNull(IDictionary<string, Tensor> dict, string key)
     {
-        // Barracuda models are NHWC; get expected channels from the first input
-        int expectedC = _model.inputs[0].shape[3]; // index 3 is channels in NHWC
-        return new Tensor(tex, channels: 3); // force RGB(3) or RGBA(4) to match model
+        if (dict.TryGetValue(key, out var t) && t != null) t.Dispose();
+        dict[key] = null;
     }
 
+    static Tensor MakeRGBInputTensor(Texture tex) => new Tensor(tex, channels: 3);
+    
     
     private const string inputName_1 = "input.1";
     private const string inputName_2 = "input.4";
@@ -242,19 +244,20 @@ public class VNectBarracudaRunner : MonoBehaviour
     private void UpdateVNectModel()
     {
         input = MakeRGBInputTensor(videoCapture.MainTexture);
-        if (inputs[inputName_1] == null)
+        if (_inputs[inputName_1] == null)
         {
-            inputs[inputName_1] = input;
-            inputs[inputName_2] = MakeRGBInputTensor(videoCapture.MainTexture);
-            inputs[inputName_3] = MakeRGBInputTensor(videoCapture.MainTexture);
+            _inputs[inputName_1] = input;
+            _inputs[inputName_2] = MakeRGBInputTensor(videoCapture.MainTexture);
+            _inputs[inputName_3] = MakeRGBInputTensor(videoCapture.MainTexture);
         }
         else
         {
-            inputs[inputName_3].Dispose();
-
-            inputs[inputName_3] = inputs[inputName_2];
-            inputs[inputName_2] = inputs[inputName_1];
-            inputs[inputName_1] = input;
+            // dispose the one that falls out of the 3-frame ring
+            DisposeAndNull(_inputs, inputName_3);
+            
+            _inputs[inputName_3] = _inputs[inputName_2];
+            _inputs[inputName_2] = _inputs[inputName_1];
+            _inputs[inputName_1] = input;
         }
 
         StartCoroutine(ExecuteModelAsync());
@@ -264,14 +267,14 @@ public class VNectBarracudaRunner : MonoBehaviour
     /// Tensor has input image
     /// </summary>
     /// <returns></returns>
-    Tensor input = new Tensor();
-    Dictionary<string, Tensor> inputs = new Dictionary<string, Tensor>() { { inputName_1, null }, { inputName_2, null }, { inputName_3, null }, };
+    Tensor input = null;
+    Dictionary<string, Tensor> _inputs = new Dictionary<string, Tensor>() { { inputName_1, null }, { inputName_2, null }, { inputName_3, null }, };
     Tensor[] b_outputs = new Tensor[4];
 
     private IEnumerator ExecuteModelAsync()
     {
         // Create input and Execute model
-        yield return _worker.StartManualSchedule(inputs);
+        yield return _worker.StartManualSchedule(_inputs);
 
         // Get outputs
         for (var i = 2; i < _model.outputs.Count; i++)
@@ -280,8 +283,8 @@ public class VNectBarracudaRunner : MonoBehaviour
         }
 
         // Get data from outputs
-        offset3D = b_outputs[2].data.Download(b_outputs[2].shape);
-        heatMap3D = b_outputs[3].data.Download(b_outputs[3].shape);
+        _offset3D = b_outputs[2].data.Download(b_outputs[2].shape);
+        _heatMap3D = b_outputs[3].data.Download(b_outputs[3].shape);
         
         // Release outputs
         for (var i = 2; i < b_outputs.Length; i++)
@@ -302,20 +305,20 @@ public class VNectBarracudaRunner : MonoBehaviour
             var maxXIndex = 0;
             var maxYIndex = 0;
             var maxZIndex = 0;
-            jointPoints[j].score3D = 0.0f;
+            _jointPoints[j].score3D = 0.0f;
             var jj = j * HeatMapCol;
             for (var z = 0; z < HeatMapCol; z++)
             {
                 var zz = jj + z;
                 for (var y = 0; y < HeatMapCol; y++)
                 {
-                    var yy = y * HeatMapCol_Squared * JointNum + zz;
+                    var yy = y * _heatMapCol_Squared * JointNum + zz;
                     for (var x = 0; x < HeatMapCol; x++)
                     {
-                        float v = heatMap3D[yy + x * HeatMapCol_JointNum];
-                        if (v > jointPoints[j].score3D)
+                        float v = _heatMap3D[yy + x * HeatMapCol_JointNum];
+                        if (v > _jointPoints[j].score3D)
                         {
-                            jointPoints[j].score3D = v;
+                            _jointPoints[j].score3D = v;
                             maxXIndex = x;
                             maxYIndex = y;
                             maxZIndex = z;
@@ -324,31 +327,31 @@ public class VNectBarracudaRunner : MonoBehaviour
                 }
             }
            
-            jointPoints[j].Now3D.x = (offset3D[maxYIndex * CubeOffsetSquared + maxXIndex * CubeOffsetLinear + j * HeatMapCol + maxZIndex] + 0.5f + (float)maxXIndex) * ImageScale - InputImageSizeHalf;
-            jointPoints[j].Now3D.y = InputImageSizeHalf - (offset3D[maxYIndex * CubeOffsetSquared + maxXIndex * CubeOffsetLinear + (j + JointNum) * HeatMapCol + maxZIndex] + 0.5f + (float)maxYIndex) * ImageScale;
-            jointPoints[j].Now3D.z = (offset3D[maxYIndex * CubeOffsetSquared + maxXIndex * CubeOffsetLinear + (j + JointNum_Squared) * HeatMapCol + maxZIndex] + 0.5f + (float)(maxZIndex - 14)) * ImageScale;
+            _jointPoints[j].Now3D.x = (_offset3D[maxYIndex * CubeOffsetSquared + maxXIndex * CubeOffsetLinear + j * HeatMapCol + maxZIndex] + 0.5f + (float)maxXIndex) * _imageScale - InputImageSizeHalf;
+            _jointPoints[j].Now3D.y = InputImageSizeHalf - (_offset3D[maxYIndex * CubeOffsetSquared + maxXIndex * CubeOffsetLinear + (j + JointNum) * HeatMapCol + maxZIndex] + 0.5f + (float)maxYIndex) * _imageScale;
+            _jointPoints[j].Now3D.z = (_offset3D[maxYIndex * CubeOffsetSquared + maxXIndex * CubeOffsetLinear + (j + JointNum_Squared) * HeatMapCol + maxZIndex] + 0.5f + (float)(maxZIndex - 14)) * _imageScale;
         }
 
         // Calculate hip location
-        var lc = (jointPoints[PositionIndex.rThighBend.Int()].Now3D + jointPoints[PositionIndex.lThighBend.Int()].Now3D) / 2f;
-        jointPoints[PositionIndex.hip.Int()].Now3D = (jointPoints[PositionIndex.abdomenUpper.Int()].Now3D + lc) / 2f;
+        var lc = (_jointPoints[PositionIndex.rThighBend.Int()].Now3D + _jointPoints[PositionIndex.lThighBend.Int()].Now3D) / 2f;
+        _jointPoints[PositionIndex.hip.Int()].Now3D = (_jointPoints[PositionIndex.abdomenUpper.Int()].Now3D + lc) / 2f;
 
         // Calculate neck location
-        jointPoints[PositionIndex.neck.Int()].Now3D = (jointPoints[PositionIndex.rShldrBend.Int()].Now3D + jointPoints[PositionIndex.lShldrBend.Int()].Now3D) / 2f;
+        _jointPoints[PositionIndex.neck.Int()].Now3D = (_jointPoints[PositionIndex.rShldrBend.Int()].Now3D + _jointPoints[PositionIndex.lShldrBend.Int()].Now3D) / 2f;
 
         // Calculate head location
-        var cEar = (jointPoints[PositionIndex.rEar.Int()].Now3D + jointPoints[PositionIndex.lEar.Int()].Now3D) / 2f;
-        var hv = cEar - jointPoints[PositionIndex.neck.Int()].Now3D;
+        var cEar = (_jointPoints[PositionIndex.rEar.Int()].Now3D + _jointPoints[PositionIndex.lEar.Int()].Now3D) / 2f;
+        var hv = cEar - _jointPoints[PositionIndex.neck.Int()].Now3D;
         var nhv = Vector3.Normalize(hv);
-        var nv = jointPoints[PositionIndex.Nose.Int()].Now3D - jointPoints[PositionIndex.neck.Int()].Now3D;
-        jointPoints[PositionIndex.head.Int()].Now3D = jointPoints[PositionIndex.neck.Int()].Now3D + nhv * Vector3.Dot(nhv, nv);
+        var nv = _jointPoints[PositionIndex.Nose.Int()].Now3D - _jointPoints[PositionIndex.neck.Int()].Now3D;
+        _jointPoints[PositionIndex.head.Int()].Now3D = _jointPoints[PositionIndex.neck.Int()].Now3D + nhv * Vector3.Dot(nhv, nv);
         
 
         // Calculate spine location
         //jointPoints[PositionIndex.spine.Int()].Now3D = jointPoints[PositionIndex.abdomenUpper.Int()].Now3D;
 
         // Kalman filter
-        foreach (var jp in jointPoints)
+        foreach (var jp in _jointPoints)
         {
             KalmanUpdate(jp);
         }
@@ -356,7 +359,7 @@ public class VNectBarracudaRunner : MonoBehaviour
         // Low pass filter
         if (UseLowPassFilter)
         {
-            foreach (var jp in jointPoints)
+            foreach (var jp in _jointPoints)
             {
                 jp.PrevPos3D[0] = jp.Pos3D;
                 for (var i = 1; i < jp.PrevPos3D.Length; i++)
