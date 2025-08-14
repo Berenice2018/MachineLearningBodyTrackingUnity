@@ -185,9 +185,9 @@ public class VNectBarracudaRunner : MonoBehaviour
 
     private IEnumerator WaitLoad()
     {
-        inputs[inputName_1] = new Tensor(InitImg);
-        inputs[inputName_2] = new Tensor(InitImg);
-        inputs[inputName_3] = new Tensor(InitImg);
+        inputs[inputName_1] = MakeRGBInputTensor(InitImg);
+        inputs[inputName_2] = MakeRGBInputTensor(InitImg);
+        inputs[inputName_3] = MakeRGBInputTensor(InitImg);
 
         // Create input and Execute model
         yield return _worker.StartManualSchedule(inputs);
@@ -221,6 +221,15 @@ public class VNectBarracudaRunner : MonoBehaviour
         //Msg.gameObject.SetActive(false);
     }
 
+    // Add this helper:
+    private Tensor MakeRGBInputTensor(Texture tex)
+    {
+        // Barracuda models are NHWC; get expected channels from the first input
+        int expectedC = _model.inputs[0].shape[3]; // index 3 is channels in NHWC
+        return new Tensor(tex, channels: 3); // force RGB(3) or RGBA(4) to match model
+    }
+
+    
     private const string inputName_1 = "input.1";
     private const string inputName_2 = "input.4";
     private const string inputName_3 = "input.7";
@@ -232,12 +241,12 @@ public class VNectBarracudaRunner : MonoBehaviour
 
     private void UpdateVNectModel()
     {
-        input = new Tensor(videoCapture.MainTexture);
+        input = MakeRGBInputTensor(videoCapture.MainTexture);
         if (inputs[inputName_1] == null)
         {
             inputs[inputName_1] = input;
-            inputs[inputName_2] = new Tensor(videoCapture.MainTexture);
-            inputs[inputName_3] = new Tensor(videoCapture.MainTexture);
+            inputs[inputName_2] = MakeRGBInputTensor(videoCapture.MainTexture);
+            inputs[inputName_3] = MakeRGBInputTensor(videoCapture.MainTexture);
         }
         else
         {
