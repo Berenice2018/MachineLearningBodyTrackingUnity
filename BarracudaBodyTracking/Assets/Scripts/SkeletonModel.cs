@@ -55,7 +55,7 @@ public static partial class EnumExtend
     }
 }
 
-public class VNectModel : MonoBehaviour
+public class SkeletonModel : MonoBehaviour
 {
 
     public class JointPoint

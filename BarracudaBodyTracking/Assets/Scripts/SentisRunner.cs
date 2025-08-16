@@ -4,12 +4,13 @@ using Unity.Sentis;
 using System.Collections;
 using System.Collections.Generic;
 using System;
+using UnityEngine.Serialization;
 
 /// <summary>
 /// VNect pose estimation runner using Unity Sentis 2.1.3
 /// Handles real-time human pose detection from video input
 /// </summary>
-public class VNectSentisRunner : MonoBehaviour
+public class SentisRunner : MonoBehaviour
 {
     #region Model Configuration
     
@@ -27,9 +28,10 @@ public class VNectSentisRunner : MonoBehaviour
     
     #region Component References
     
+    [FormerlySerializedAs("vNectModel")]
     [Header("Component References")]
     [Tooltip("VNect model component for pose visualization")]
-    public VNectModel vNectModel;
+    public SkeletonModel skeletonModel;
     
     [Tooltip("Video capture component for input")]
     public VideoCapture videoCapture;
@@ -81,7 +83,7 @@ public class VNectSentisRunner : MonoBehaviour
     
     #region Private Fields - Processing Data
     
-    private VNectModel.JointPoint[] _jointPoints;
+    private SkeletonModel.JointPoint[] _jointPoints;
     private const int JointNum = 24;
     
     // Calculated dimensions
@@ -298,7 +300,7 @@ public class VNectSentisRunner : MonoBehaviour
             _heatMap3D = heatMap3D.DownloadToArray();
             
             // Initialize joint points
-            _jointPoints = vNectModel.Init();
+            _jointPoints = skeletonModel.Init();
             
             // Process initial pose
             PredictPose();
@@ -450,25 +452,26 @@ public class VNectSentisRunner : MonoBehaviour
         
         int jj = jointIndex * heatMapCol;
         
+        // NCHW: (1, 672, 28, 28) where channel = j*heatMapCol + z
         for (int z = 0; z < heatMapCol; z++)
         {
-            int zz = jj + z;
+            int c = jointIndex * heatMapCol + z;                  // channel index
+            int cBase = c * _heatMapColSquared;                   // stride = H*W
             for (int y = 0; y < heatMapCol; y++)
             {
-                int yy = y * _heatMapColSquared * JointNum + zz;
+                int row = cBase + y * heatMapCol;
                 for (int x = 0; x < heatMapCol; x++)
                 {
-                    float value = _heatMap3D[yy + x * _heatMapColJointNum];
-                    if (value > _jointPoints[jointIndex].score3D)
+                    float v = _heatMap3D[row + x];
+                    if (v > _jointPoints[jointIndex].score3D)
                     {
-                        _jointPoints[jointIndex].score3D = value;
-                        maxXIndex = x;
-                        maxYIndex = y;
-                        maxZIndex = z;
+                        _jointPoints[jointIndex].score3D = v;
+                        maxXIndex = x; maxYIndex = y; maxZIndex = z;
                     }
                 }
             }
         }
+
         
         // Calculate 3D position from offsets
         CalculateJointPosition(jointIndex, maxXIndex, maxYIndex, maxZIndex);
@@ -479,19 +482,30 @@ public class VNectSentisRunner : MonoBehaviour
     /// </summary>
     private void CalculateJointPosition(int jointIndex, int maxX, int maxY, int maxZ)
     {
-        int baseIndex = maxY * _cubeOffsetSquared + maxX * _cubeOffsetLinear;
-        
-        // X coordinate
-        _jointPoints[jointIndex].Now3D.x = 
-            (_offset3D[baseIndex + jointIndex * heatMapCol + maxZ] + 0.5f + maxX) * _imageScale - _inputImageSizeHalf;
-        
-        // Y coordinate (flipped)
-        _jointPoints[jointIndex].Now3D.y = 
-            _inputImageSizeHalf - (_offset3D[baseIndex + (jointIndex + JointNum) * heatMapCol + maxZ] + 0.5f + maxY) * _imageScale;
-        
-        // Z coordinate
-        _jointPoints[jointIndex].Now3D.z = 
-            (_offset3D[baseIndex + (jointIndex + _jointNumSquared) * heatMapCol + maxZ] + 0.5f + (maxZ - 14)) * _imageScale;
+        // NCHW: (1, 2016, 28, 28) = 3 * (24 * 28) channels
+        int channelsPerAxis = JointNum * heatMapCol; // 24*28 = 672
+
+        int cX = /* axis 0 */ 0 * channelsPerAxis + jointIndex * heatMapCol + maxZ;
+        int cY = /* axis 1 */ 1 * channelsPerAxis + jointIndex * heatMapCol + maxZ;
+        int cZ = /* axis 2 */ 2 * channelsPerAxis + jointIndex * heatMapCol + maxZ;
+
+        int baseX = cX * _heatMapColSquared + maxY * heatMapCol + maxX;
+        int baseY = cY * _heatMapColSquared + maxY * heatMapCol + maxX;
+        int baseZ = cZ * _heatMapColSquared + maxY * heatMapCol + maxX;
+
+        float offX = _offset3D[baseX];
+        float offY = _offset3D[baseY];
+        float offZ = _offset3D[baseZ];
+
+        _jointPoints[jointIndex].Now3D.x =
+            (offX + 0.5f + maxX) * _imageScale - _inputImageSizeHalf;
+
+// flip Y for Unity
+        _jointPoints[jointIndex].Now3D.y =
+            _inputImageSizeHalf - (offY + 0.5f + maxY) * _imageScale;
+
+        _jointPoints[jointIndex].Now3D.z =
+            (offZ + 0.5f + (maxZ - 14)) * _imageScale;
     }
     
     /// <summary>
@@ -547,7 +561,7 @@ public class VNectSentisRunner : MonoBehaviour
     /// <summary>
     /// Apply Kalman filter to a single joint point
     /// </summary>
-    private void ApplyKalmanFilter(VNectModel.JointPoint jointPoint)
+    private void ApplyKalmanFilter(SkeletonModel.JointPoint jointPoint)
     {
         // Measurement update
         UpdateKalmanGain(jointPoint);
@@ -562,7 +576,7 @@ public class VNectSentisRunner : MonoBehaviour
     /// <summary>
     /// Update Kalman gain and covariance
     /// </summary>
-    private void UpdateKalmanGain(VNectModel.JointPoint jointPoint)
+    private void UpdateKalmanGain(SkeletonModel.JointPoint jointPoint)
     {
         // Calculate Kalman gain for each axis
         jointPoint.K.x = (jointPoint.P.x + kalmanParamQ) / (jointPoint.P.x + kalmanParamQ + kalmanParamR);
@@ -645,7 +659,7 @@ public class VNectSentisRunner : MonoBehaviour
     /// <summary>
     /// Get current joint points
     /// </summary>
-    public VNectModel.JointPoint[] GetJointPoints() => _jointPoints;
+    public SkeletonModel.JointPoint[] GetJointPoints() => _jointPoints;
     
     /// <summary>
     /// Manually trigger model reinitialization

@@ -197,7 +197,7 @@ public class VNectPoseRetargeter : MonoBehaviour
     /// <summary>
     /// Main entry from runner.
     /// </summary>
-    public void ApplyPose(VNectModel.JointPoint[] joints)
+    public void ApplyPose(SkeletonModel.JointPoint[] joints)
     {
         if (!_ready || joints == null || joints.Length < 18) return;
 
