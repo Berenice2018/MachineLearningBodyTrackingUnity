@@ -171,15 +171,14 @@ MonoBehaviour:
   verbose: 1
   vNectModel: {fileID: 1034608948}
   videoCapture: {fileID: 1848773650}
-  poseRetargeter: {fileID: 92433106}
+  initImage: {fileID: 2800000, guid: ad05e7fc23ec7df40acf63ce37cc522f, type: 3}
   inputImageSize: 448
   heatMapCol: 28
+  waitTimeModelLoad: 5
   kalmanParamQ: 0.001
   kalmanParamR: 0.0015
   useLowPassFilter: 0
   lowPassParam: 0.1
-  initImg: {fileID: 2800000, guid: ad05e7fc23ec7df40acf63ce37cc522f, type: 3}
-  waitTimeModelLoad: 5
 --- !u!114 &92433106
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -187,18 +186,17 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 92433102}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 341edacf753914bb5919456255bc0bfc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   targetAvatar: {fileID: 1034608949}
-  enableSmoothing: 1
-  smoothingFactor: 0.1
-  enableDebugVisualization: 0
-  poseScale: 1
+  debugDraw: 0
   enableHeightNormalization: 1
   referenceHeight: 1.8
+  poseScale: 1
+  smoothing: 0.1
 --- !u!1 &116302815
 GameObject:
   m_ObjectHideFlags: 0
@@ -474,6 +472,11 @@ PrefabInstance:
       propertyPath: m_IsActive
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 1779665064462175557, guid: a9c417137d3965745b6459ee29ace6f2,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 1919840562988403317, guid: a9c417137d3965745b6459ee29ace6f2,
         type: 3}
       propertyPath: m_RootOrder
@@ -587,7 +590,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   SkeletonMaterial: {fileID: 2100000, guid: f8188c9479a7aad41b7448fe5eeed839, type: 2}
-  ShowSkeleton: 0
+  ShowSkeleton: 1
   SkeletonX: -1
   SkeletonY: 0.9
   SkeletonZ: 0
@@ -801,7 +804,7 @@ Transform:
   m_GameObject: {fileID: 1848773649}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.62, y: 0.81, z: -0.32}
+  m_LocalPosition: {x: -1.72, y: 0.81, z: -0.32}
   m_LocalScale: {x: 1.5, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

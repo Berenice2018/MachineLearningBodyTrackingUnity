@@ -1,43 +1,61 @@
 using UnityEngine;
+using UnityEngine.UI;
 using Unity.Sentis;
 using System.Collections;
 using System.Collections.Generic;
-using System.Threading.Tasks;
+using System;
 
 /// <summary>
 /// VNect pose estimation runner using Unity Sentis 2.1.3
-/// Processes video input to detect 3D human pose joint points in real-time
+/// Handles real-time human pose detection from video input
 /// </summary>
 public class VNectSentisRunner : MonoBehaviour
 {
-    #region Public Configuration
-    [Header("Model Configuration")]
-    [Tooltip("Neural network model asset for pose estimation")]
+    #region Model Configuration
+    
+    [Header("Model Settings")]
+    [Tooltip("The ResNet model asset for pose estimation")]
     public ModelAsset modelAsset;
     
-    [Tooltip("Computation backend type for model inference")]
+    [Tooltip("Backend type for model execution")]
     public BackendType backendType = BackendType.GPUCompute;
     
     [Tooltip("Enable verbose logging for debugging")]
     public bool verbose = true;
-
-    [Header("Components")]
+    
+    #endregion
+    
+    #region Component References
+    
+    [Header("Component References")]
     [Tooltip("VNect model component for pose visualization")]
     public VNectModel vNectModel;
     
     [Tooltip("Video capture component for input")]
     public VideoCapture videoCapture;
     
-    [Tooltip("Pose retargeter component for avatar animation")]
-    public VNectPoseRetargeter poseRetargeter;
-
-    [Header("Input Parameters")]
-    [Tooltip("Input image size (width and height in pixels)")]
+    [Tooltip("Initial image for model warm-up")]
+    public Texture2D initImage;
+    
+    #endregion
+    
+    #region Input/Output Configuration
+    
+    [Header("Input Configuration")]
+    [Tooltip("Input image size (width and height)")]
     public int inputImageSize = 448;
     
-    [Tooltip("Heat map column count")]
+    [Tooltip("Heatmap resolution")]
     public int heatMapCol = 28;
-
+    
+    [Header("Model Loading")]
+    [Tooltip("Wait time after model loading before starting inference")]
+    public float waitTimeModelLoad = 10f;
+    
+    #endregion
+    
+    #region Filtering Parameters
+    
     [Header("Filtering Parameters")]
     [Tooltip("Kalman filter process noise parameter")]
     public float kalmanParamQ = 0.001f;
@@ -46,680 +64,493 @@ public class VNectSentisRunner : MonoBehaviour
     public float kalmanParamR = 0.0015f;
     
     [Tooltip("Enable low pass filter for smoothing")]
-    public bool useLowPassFilter = false;
+    public bool useLowPassFilter = true;
     
-    [Tooltip("Low pass filter parameter (0-1, higher = more smoothing)")]
+    [Tooltip("Low pass filter smoothing parameter")]
     [Range(0f, 1f)]
-    public float lowPassParam = 0.5f;
-
-    [Header("Initialization")]
-    [Tooltip("Initial image for model warm-up")]
-    public Texture2D initImg;
+    public float lowPassParam = 0.8f;
     
-    [Tooltip("Wait time before starting real-time processing")]
-    public float waitTimeModelLoad = 2f;
-    #endregion
-
-    #region Private Fields - Model and Worker
-    private Model m_RuntimeModel;
-    private Worker m_Worker;
-    private bool m_IsModelLoaded = false;
-    private string[] m_InputNames;   // length 1..3 depending on model
-
-    #endregion
-
-    #region Private Fields - Joint Processing
-    /// <summary>Coordinates of joint points</summary>
-    private VNectModel.JointPoint[] m_JointPoints;
-    
-    /// <summary>Number of joint points detected by the model</summary>
-    private const int JOINT_NUM = 24;
-    
-    /// <summary>Number of joints in 2D space (x, y coordinates)</summary>
-    private const int JOINT_NUM_2D = JOINT_NUM * 2;
-    
-    /// <summary>Number of joints in 3D space (x, y, z coordinates)</summary>
-    private const int JOINT_NUM_3D = JOINT_NUM * 3;
-    #endregion
-
-    #region Private Fields - Image Processing
-    /// <summary>Input image size as float for calculations</summary>
-    private float m_InputImageSizeF;
-    
-    /// <summary>Half of input image size for centering calculations</summary>
-    private float m_InputImageSizeHalf;
-    
-    /// <summary>Scale factor from heat map to image coordinates</summary>
-    private float m_ImageScale;
-    
-    /// <summary>Unit size in heat map coordinates</summary>
-    private float m_Unit;
-    #endregion
-
-    #region Private Fields - Heat Map Dimensions
-    /// <summary>Heat map area (HeatMapCol * HeatMapCol)</summary>
-    private int m_HeatMapColSquared;
-    
-    /// <summary>Heat map volume (HeatMapCol^3)</summary>
-    private int m_HeatMapColCube;
-    
-    /// <summary>HeatMapCol * JOINT_NUM for indexing</summary>
-    private int m_HeatMapColJointNum;
-    
-    /// <summary>Linear cube offset for 3D coordinate calculations</summary>
-    private int m_CubeOffsetLinear;
-    
-    /// <summary>Squared cube offset for 3D coordinate calculations</summary>
-    private int m_CubeOffsetSquared;
-    #endregion
-
-    #region Private Fields - Model Tensors and Processing
-    /// <summary>Current input tensor</summary>
-    private Tensor<float> m_CurrentInput;
-    
-    /// <summary>Ring buffer for temporal input frames</summary>
-    private readonly Dictionary<string, Tensor<float>> m_InputTensors = new Dictionary<string, Tensor<float>>();
-    
-    /// <summary>Model output tensors</summary>
-    private Tensor<float> m_Output3DOffset;
-    private Tensor<float> m_Output3DHeatMap;
-    
-    #region Private Fields - Heat Map Data Processing
-    /// <summary>Buffer memory has 2D heat map</summary>
-    private float[] m_HeatMap2D;
-
-    /// <summary>Buffer memory has offset 2D</summary>
-    private float[] m_Offset2D;
-    
-    /// <summary>Buffer memory has 3D heat map</summary>
-    private float[] m_HeatMap3D;
-    
-    /// <summary>Buffer memory has 3D offset</summary>
-    private float[] m_Offset3D;
     #endregion
     
-    /// <summary>Input names for the temporal model</summary>
-    private const string INPUT_NAME_1 = "input.1";  // Current frame
-    private const string INPUT_NAME_2 = "input.4";  // Previous frame 1
-    private const string INPUT_NAME_3 = "input.7";  // Previous frame 2
+    #region Private Fields - Sentis Components
     
-    /// <summary>Processing lock to prevent concurrent model execution</summary>
-    private bool m_IsProcessingLocked = true;
+    private Model _model;
+    private Worker _worker;
     
-    /// <summary>Flag to track if model is currently executing</summary>
-    private bool m_IsExecuting = false;
     #endregion
-
+    
+    #region Private Fields - Processing Data
+    
+    private VNectModel.JointPoint[] _jointPoints;
+    private const int JointNum = 24;
+    
+    // Calculated dimensions
+    private float _inputImageSizeHalf;
+    private float _inputImageSizeF;
+    private int _heatMapColSquared;
+    private int _heatMapColCubed;
+    private float _imageScale;
+    private float _unit;
+    
+    // Index calculations
+    private int _jointNumSquared = JointNum * 2;
+    private int _jointNumCubed = JointNum * 3;
+    private int _heatMapColJointNum;
+    private int _cubeOffsetLinear;
+    private int _cubeOffsetSquared;
+    
+    // Buffer arrays
+    private float[] _heatMap3D;
+    private float[] _offset3D;
+    
+    #endregion
+    
+    #region Private Fields - Input Management
+    
+    // Input tensor names based on model specification
+    private const string InputName1 = "input.1";
+    private const string InputName4 = "input.4"; 
+    private const string InputName7 = "input.7";
+    
+    // Output indices based on model specification
+    private const int Output2Index = 2; // 530: offset 3D
+    private const int Output3Index = 3; // 516: heatmap 3D
+    
+    private Dictionary<string, Tensor<float>> _inputTensors;
+    private bool _isProcessing = false;
+    private bool _isModelReady = false;
+    
+    #endregion
+    
     #region Unity Lifecycle
-    /// <summary>
-    /// Initialize the pose estimation system
-    /// </summary>
+    
     private void Start()
     {
         InitializeSystem();
-        LoadModelAsync();
     }
-
-    /// <summary>
-    /// Update pose estimation each frame
-    /// </summary>
+    
     private void Update()
     {
-        if (!m_IsProcessingLocked && !m_IsExecuting)
+        if (_isModelReady && !_isProcessing)
         {
-            UpdatePoseEstimation();
+            ProcessFrame();
         }
     }
-
-    /// <summary>
-    /// Clean up resources when destroyed
-    /// </summary>
+    
     private void OnDestroy()
     {
         CleanupResources();
     }
+    
     #endregion
-
-    #region System Initialization
+    
+    #region Initialization
+    
     /// <summary>
-    /// Initialize system parameters and allocate memory
+    /// Initialize the pose estimation system
     /// </summary>
     private void InitializeSystem()
     {
-        // Disable screen sleep for continuous processing
-        Screen.sleepTimeout = SleepTimeout.NeverSleep;
-        
+        try
+        {
+            InitializeParameters();
+            InitializeModel();
+            InitializeInputTensors();
+            
+            // Prevent screen sleep for mobile devices
+            Screen.sleepTimeout = SleepTimeout.NeverSleep;
+            
+            StartCoroutine(WarmupModel());
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Failed to initialize VNect system: {e.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// Initialize calculation parameters and buffer arrays
+    /// </summary>
+    private void InitializeParameters()
+    {
         // Calculate derived dimensions
-        m_HeatMapColSquared = heatMapCol * heatMapCol;
-        m_HeatMapColCube = heatMapCol * heatMapCol * heatMapCol;
-        m_HeatMapColJointNum = heatMapCol * JOINT_NUM;
-        m_CubeOffsetLinear = heatMapCol * JOINT_NUM_3D;
-        m_CubeOffsetSquared = m_HeatMapColSquared * JOINT_NUM_3D;
+        _heatMapColSquared = heatMapCol * heatMapCol;
+        _heatMapColCubed = heatMapCol * heatMapCol * heatMapCol;
+        _heatMapColJointNum = heatMapCol * JointNum;
+        _cubeOffsetLinear = heatMapCol * _jointNumCubed;
+        _cubeOffsetSquared = _heatMapColSquared * _jointNumCubed;
         
-        // Allocate heat map processing buffers
-        m_HeatMap2D = new float[JOINT_NUM * m_HeatMapColSquared];
-        m_Offset2D = new float[JOINT_NUM * m_HeatMapColSquared * 2];
-        m_HeatMap3D = new float[JOINT_NUM * m_HeatMapColCube];
-        m_Offset3D = new float[JOINT_NUM * m_HeatMapColCube * 3];
+        // Initialize buffer arrays
+        _heatMap3D = new float[JointNum * _heatMapColCubed];
+        _offset3D = new float[JointNum * _heatMapColCubed * 3];
         
-        // Calculate image processing parameters
-        m_Unit = 1f / (float)heatMapCol;
-        m_InputImageSizeF = inputImageSize;
-        m_InputImageSizeHalf = m_InputImageSizeF * 0.5f;
-        m_ImageScale = inputImageSize / (float)heatMapCol;
-        
-        // Initialize input tensor dictionary
-        m_InputTensors[INPUT_NAME_1] = null;
-        m_InputTensors[INPUT_NAME_2] = null;
-        m_InputTensors[INPUT_NAME_3] = null;
+        // Calculate scaling parameters
+        _unit = 1f / (float)heatMapCol;
+        _inputImageSizeF = inputImageSize;
+        _inputImageSizeHalf = _inputImageSizeF / 2f;
+        _imageScale = inputImageSize / (float)heatMapCol;
         
         if (verbose)
         {
-            Debug.Log($"VNect Sentis Runner initialized - Image Size: {inputImageSize}, HeatMap: {heatMapCol}x{heatMapCol}");
+            Debug.Log($"VNect parameters initialized - Image size: {inputImageSize}, Heatmap: {heatMapCol}");
         }
     }
-
+    
     /// <summary>
-    /// Load and initialize the neural network model
+    /// Initialize the Sentis model and worker
     /// </summary>
-    private async void LoadModelAsync()
+    private void InitializeModel()
     {
-        try
+        if (modelAsset == null)
         {
-            // Load model from asset
-            m_RuntimeModel = ModelLoader.Load(modelAsset);
-            
-            // Create worker with specified backend
-            m_Worker = new Worker(m_RuntimeModel, backendType);
-            
-            m_RuntimeModel = ModelLoader.Load(modelAsset);
-            m_Worker = new Worker(m_RuntimeModel, backendType);
-
-// Cache actual input names
-            int inCount = m_RuntimeModel.inputs.Count;
-            m_InputNames = new string[inCount];
-            for (int i = 0; i < inCount; i++)
-            {
-                m_InputNames[i] = m_RuntimeModel.inputs[i].name;
-                if (verbose) Debug.Log($"Model input[{i}]: {m_InputNames[i]}");
-            }
-
-// Init the dict with the actual keys
-            m_InputTensors.Clear();
-            for (int i = 0; i < inCount; i++)
-                m_InputTensors[m_InputNames[i]] = null;
-
-            
-            if (verbose)
-            {
-                Debug.Log($"Model loaded successfully with {backendType} backend");
-                Debug.Log($"Model inputs: {m_RuntimeModel.inputs.Count}, outputs: {m_RuntimeModel.outputs.Count}");
-            }
-            
-            m_IsModelLoaded = true;
-            
-            // Initialize model asynchronously
-            await InitializeModelAsync();
+            throw new ArgumentNullException(nameof(modelAsset), "Model asset is not assigned");
         }
-        catch (System.Exception e)
+        
+        _model = ModelLoader.Load(modelAsset);
+        _worker = new Worker(_model,backendType);
+        
+        if (verbose)
         {
-            Debug.LogError($"Failed to load model: {e.Message}");
+            Debug.Log($"Model loaded with backend: {backendType}");
+            LogModelInfo();
         }
     }
+    
+    /// <summary>
+    /// Initialize input tensor dictionary
+    /// </summary>
+    private void InitializeInputTensors()
+    {
+        _inputTensors = new Dictionary<string, Tensor<float>>();
+        
+        // Initialize with actual model input names
+        foreach (var input in _model.inputs)
+        {
+            _inputTensors[input.name] = null;
+        }
+    }
+    
+    /// <summary>
+    /// Log model information for debugging
+    /// </summary>
+    private void LogModelInfo()
+    {
+        Debug.Log("=== Model Information ===");
+        Debug.Log($"Inputs: {_model.inputs.Count}");
+        foreach (var input in _model.inputs)
+        {
+            Debug.Log($"  {input.name}: {input.shape}");
+        }
+        
+        Debug.Log($"Outputs: {_model.outputs.Count}");
+        foreach (var output in _model.outputs)
+        {
+            Debug.Log($"  {output.name}: {output.index}");
+        }
+    }
+    
     #endregion
-
-    #region Model Initialization
+    
+    #region Model Warmup
+    
     /// <summary>
-    /// Warm up the model and initialize pose tracking
+    /// Warm up the model with initial image
     /// </summary>
-    private async Task InitializeModelAsync()
+    private IEnumerator WarmupModel()
     {
-        if (!m_IsModelLoaded || initImg == null)
+        if (initImage == null)
         {
-            Debug.LogError("Model not loaded or initial image not set");
-            return;
+            Debug.LogWarning("No initial image provided for model warmup");
+            yield break;
         }
-
-        try
+        
+        Debug.Log("Starting model warmup...");
+        
+        //try
         {
-            // Create initial input tensors for warm-up
-            var initTensor = CreateInputTensor(initImg);
-
-            if (m_InputNames.Length >= 3)
-            {
-                m_InputTensors[m_InputNames[0]] = initTensor;                      // current
-                m_InputTensors[m_InputNames[1]] = CreateInputTensor(initImg);      // prev1
-                m_InputTensors[m_InputNames[2]] = CreateInputTensor(initImg);      // prev2
-            }
-            else if (m_InputNames.Length == 1)
-            {
-                // Single-frame model: set only once
-                m_InputTensors[m_InputNames[0]] = initTensor;
-            }
-            else
-            {
-                Debug.LogError($"Unexpected input count: {m_InputNames.Length}");
-                return;
-            }
-
-            // Execute model for warm-up
-            await ExecuteModelAsync();
-
-            // Initialize VNect model joint points
-            m_JointPoints = vNectModel.Init();
+            // Create initial tensors for warmup using proper input names from model
+            var warmupTensor1 = CreateInputTensor(initImage);
+            var warmupTensor2 = CreateInputTensor(initImage);
+            var warmupTensor3 = CreateInputTensor(initImage);
             
-            // Run initial pose prediction
+            // Set inputs using the correct model input names
+            _worker.SetInput(_model.inputs[0].name, warmupTensor1);
+            _worker.SetInput(_model.inputs[1].name, warmupTensor2);
+            _worker.SetInput(_model.inputs[2].name, warmupTensor3);
+            
+            // Store tensors for disposal
+            _inputTensors[_model.inputs[0].name] = warmupTensor1;
+            _inputTensors[_model.inputs[1].name] = warmupTensor2;
+            _inputTensors[_model.inputs[2].name] = warmupTensor3;
+            
+            // Execute model for warmup
+            _worker.Schedule();
+            yield return null; // let the scheduled work run
+            
+// Get outputs (GPU tensors)
+            var offset3DGpu   = _worker.PeekOutput(_model.outputs[Output2Index].name) as Tensor<float>;
+            var heatMap3DGpu  = _worker.PeekOutput(_model.outputs[Output3Index].name) as Tensor<float>;
+
+// Read back to CPU and use the returned clones
+            using var offset3D = offset3DGpu.ReadbackAndClone();    // CPU tensor
+            using var heatMap3D = heatMap3DGpu.ReadbackAndClone();  // CPU tensor
+            _offset3D = offset3D.DownloadToArray(); //Flatten to float[]
+            _heatMap3D = heatMap3D.DownloadToArray();
+            
+            // Initialize joint points
+            _jointPoints = vNectModel.Init();
+            
+            // Process initial pose
             PredictPose();
-
+            
             // Wait for specified time
-            await Task.Delay((int)(waitTimeModelLoad * 1000));
-
+            yield return new WaitForSeconds(waitTimeModelLoad);
+            
             // Initialize video capture
             if (videoCapture != null)
             {
                 videoCapture.Init(inputImageSize, inputImageSize);
             }
-
-            // Unlock processing
-            m_IsProcessingLocked = false;
             
-            if (verbose)
-            {
-                Debug.Log("VNect model initialization completed");
-            }
+            _isModelReady = true;
+            Debug.Log("Model warmup completed and ready for inference");
         }
-        catch (System.Exception e)
+        /*catch (Exception e)
         {
-            Debug.LogError($"Model initialization failed: {e.Message}");
-        }
+            Debug.LogError($"Model warmup failed: {e.Message}");
+        }*/
     }
+    
     #endregion
-
-    #region Input Processing
+    
+    #region Frame Processing
+    
     /// <summary>
-    /// Create input tensor from texture
+    /// Process a single frame from video capture
     /// </summary>
-    /// <param name="texture">Source texture</param>
-    /// <returns>Formatted input tensor</returns>
-    private Tensor<float> CreateInputTensor(Texture texture)
-    {
-        return TextureConverter.ToTensor(
-            texture, inputImageSize, inputImageSize, 3) as Tensor<float>;
-    }
-
-    /// <summary>
-    /// Update pose estimation with new video frame
-    /// </summary>
-    private void UpdatePoseEstimation()
+    private void ProcessFrame()
     {
         if (videoCapture?.MainTexture == null)
             return;
-
-        // Create new input tensor from current video frame
-        m_CurrentInput = CreateInputTensor(videoCapture.MainTexture);
-
-        // Update temporal input ring buffer
-        UpdateInputTensorBuffer();
-
-        // Execute model asynchronously
-        _ = ExecuteModelAsync();
+        
+        _isProcessing = true;
+        StartCoroutine(ExecuteModelAsync());
     }
-
+    
     /// <summary>
-    /// Update the temporal input tensor ring buffer
+    /// Execute model inference asynchronously
     /// </summary>
-    private void UpdateInputTensorBuffer()
+    private IEnumerator ExecuteModelAsync()
     {
-        var mainTex = videoCapture.MainTexture;
-        //if (mainTex == null) return;
-
-        if (m_InputNames.Length == 1)
+        //try
         {
-            DisposeTensorSafely(m_InputTensors[m_InputNames[0]]);
-            m_InputTensors[m_InputNames[0]] = CreateInputTensor(mainTex);
-            return;
+            // Update input tensors with new frame
+            UpdateInputTensors();
+            
+            // Execute model
+            _worker.Schedule();
+            yield return null; // let the scheduled work run
+            
+// Get outputs (GPU tensors)
+            var offset3DGpu   = _worker.PeekOutput(_model.outputs[Output2Index].name) as Tensor<float>;
+            var heatMap3DGpu  = _worker.PeekOutput(_model.outputs[Output3Index].name) as Tensor<float>;
+
+// Read back to CPU and use the returned clones
+            using var offset3D = offset3DGpu.ReadbackAndClone();    // CPU tensor
+            using var heatMap3D = heatMap3DGpu.ReadbackAndClone();  // CPU tensor
+            _offset3D = offset3D.DownloadToArray(); //Flatten to float[]
+            _heatMap3D = heatMap3D.DownloadToArray();
+            
+            // Process pose prediction
+            PredictPose();
         }
-
-        // 3-frame temporal model
-        if (m_InputTensors[m_InputNames[0]] == null)
-        {
-            m_InputTensors[m_InputNames[0]] = CreateInputTensor(mainTex);
-            m_InputTensors[m_InputNames[1]] = CreateInputTensor(mainTex);
-            m_InputTensors[m_InputNames[2]] = CreateInputTensor(mainTex);
-        }
-        else
-        {
-            DisposeTensorSafely(m_InputTensors[m_InputNames[2]]);
-            m_InputTensors[m_InputNames[2]] = m_InputTensors[m_InputNames[1]];
-            m_InputTensors[m_InputNames[1]] = m_InputTensors[m_InputNames[0]];
-            m_InputTensors[m_InputNames[0]] = CreateInputTensor(mainTex);
-        }
-    }
-
-    #endregion
-
-    #region Model Execution
-    /// <summary>
-    /// Execute the neural network model asynchronously
-    /// </summary>
-    private async Task ExecuteModelAsync()
-    {
-        m_IsExecuting = true;
-        try
-        {
-            // Feed inputs
-            for (int i = 0; i < m_InputNames.Length; i++)
-                m_Worker.SetInput(m_InputNames[i], m_InputTensors[m_InputNames[i]]);
-
-            // Run and sync
-            m_Worker.Schedule();
-
-            // Read outputs (indices 2 and 3 match your existing code)
-            var tOff = m_Worker.PeekOutput(m_RuntimeModel.outputs[2].name) as Tensor<float>;
-            var tHm  = m_Worker.PeekOutput(m_RuntimeModel.outputs[3].name) as Tensor<float>;
-
-            if (tOff == null || tHm == null)
-            {
-                Debug.LogError("Expected 3D outputs are missing.");
-                return;
-            }
-
-            m_Offset3D  = tOff.DownloadToArray();  // float[]
-            m_HeatMap3D = tHm.DownloadToArray();   // float[]
-
-            PredictPose(); // proceed
-        }
-        catch (System.Exception e)
+        /*catch (Exception e)
         {
             Debug.LogError($"Model execution failed: {e.Message}");
         }
-        finally { m_IsExecuting = false; }
-    }
-
-
-    /// <summary>
-    /// Retrieve and process model outputs
-    /// </summary>
-    private void RetrieveModelOutputs()
-    {
-        try
+        finally*/
         {
-            // Get output tensors - check which indices correspond to your model outputs
-            // You may need to adjust these indices based on your specific VNect model
-            
-            if (m_RuntimeModel.outputs.Count >= 4)
-            {
-                // Typical VNect model output order:
-                // outputs[0] - 2D heatmap (optional)
-                // outputs[1] - 2D offset (optional)  
-                // outputs[2] - 3D offset
-                // outputs[3] - 3D heatmap
-                
-                var output3DOffset = m_Worker.PeekOutput(m_RuntimeModel.outputs[2].name) as Tensor<float>;
-                var output3DHeatMap = m_Worker.PeekOutput(m_RuntimeModel.outputs[3].name) as Tensor<float>;
-
-                // Download data to CPU
-                if (output3DOffset != null && output3DHeatMap != null)
-                {
-                    m_Offset3D = output3DOffset.DownloadToArray();
-                    m_HeatMap3D = output3DHeatMap.DownloadToArray();
-                    
-                    if (verbose && m_FrameCounter % 60 == 0) // Log every 60 frames
-                    {
-                        Debug.Log($"Retrieved outputs - 3D Offset: {m_Offset3D.Length}, 3D HeatMap: {m_HeatMap3D.Length}");
-                        Debug.Log($"Expected 3D Offset size: {JOINT_NUM * m_HeatMapColCube * 3}");
-                        Debug.Log($"Expected 3D HeatMap size: {JOINT_NUM * m_HeatMapColCube}");
-                    }
-                }
-                else
-                {
-                    Debug.LogWarning("Failed to retrieve 3D output tensors");
-                }
-                
-                // Optionally get 2D outputs if available
-                if (m_RuntimeModel.outputs.Count >= 2)
-                {
-                    var output2DOffset = m_Worker.PeekOutput(m_RuntimeModel.outputs[1].name) as Tensor<float>;
-                    var output2DHeatMap = m_Worker.PeekOutput(m_RuntimeModel.outputs[0].name) as Tensor<float>;
-                    
-                    if (output2DOffset != null && output2DHeatMap != null)
-                    {
-                        m_Offset2D = output2DOffset.DownloadToArray();
-                        m_HeatMap2D = output2DHeatMap.DownloadToArray();
-                    }
-                }
-            }
-            else
-            {
-                Debug.LogError($"Model has insufficient outputs. Expected at least 4, got {m_RuntimeModel.outputs.Count}");
-                
-                // Log available outputs for debugging
-                for (int i = 0; i < m_RuntimeModel.outputs.Count; i++)
-                {
-                    var output = m_RuntimeModel.outputs[i];
-                    Debug.Log($"Output {i}: {output.name}, Index: {string.Join(",", output.index)}");
-                }
-            }
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"Failed to retrieve model outputs: {e.Message}");
+            _isProcessing = false;
         }
     }
     
-    /// <summary>Frame counter for debugging</summary>
-    private int m_FrameCounter = 0;
-    #endregion
-
-    #region Pose Prediction
     /// <summary>
-    /// Predict 3D joint positions from model outputs using heatmap analysis
-    /// This mirrors the original Barracuda implementation more closely
+    /// Update input tensors with new frame, maintaining 3-frame history
+    /// </summary>
+    private void UpdateInputTensors()
+    {
+        var newTensor = CreateInputTensor(videoCapture.MainTexture);
+        
+        // Get the actual input names from the model
+        string input1Name = _model.inputs[0].name;
+        string input2Name = _model.inputs[1].name;
+        string input3Name = _model.inputs[2].name;
+        
+        // Dispose oldest tensor and shift the ring buffer
+        if (_inputTensors.ContainsKey(input3Name))
+        {
+            _inputTensors[input3Name]?.Dispose();
+        }
+        
+        // Shift tensors in ring buffer
+        if (_inputTensors.ContainsKey(input2Name))
+        {
+            _inputTensors[input3Name] = _inputTensors[input2Name];
+            _worker.SetInput(input3Name, _inputTensors[input3Name]);
+        }
+        
+        if (_inputTensors.ContainsKey(input1Name))
+        {
+            _inputTensors[input2Name] = _inputTensors[input1Name];
+            _worker.SetInput(input2Name, _inputTensors[input2Name]);
+        }
+        
+        // Set new tensor
+        _inputTensors[input1Name] = newTensor;
+        _worker.SetInput(input1Name, newTensor);
+    }
+    
+    /// <summary>
+    /// Create input tensor from texture
+    /// </summary>
+    private Tensor<float> CreateInputTensor(Texture texture)
+    {
+        return TextureConverter.ToTensor(texture, inputImageSize, inputImageSize, 3);
+    }
+    
+    #endregion
+    
+    #region Pose Prediction
+    
+    /// <summary>
+    /// Predict 3D joint positions from network outputs
     /// </summary>
     private void PredictPose()
     {
-        if (m_HeatMap3D == null || m_Offset3D == null || m_JointPoints == null)
+        // Find maximum activation for each joint
+        for (int j = 0; j < JointNum; j++)
         {
-            if (verbose && m_FrameCounter % 60 == 0)
-            {
-                Debug.LogWarning("Missing pose prediction data");
-            }
-            return;
+            FindMaxActivation(j);
         }
-
-        m_FrameCounter++;
-
-        // Process each joint using the original heatmap analysis method
-        for (int jointIndex = 0; jointIndex < JOINT_NUM; jointIndex++)
-        {
-            FindMaxActivationIn3DHeatmap(jointIndex, out int maxX, out int maxY, out int maxZ, out float maxScore);
-            
-            // Store confidence score
-            m_JointPoints[jointIndex].score3D = maxScore;
-            
-            // Calculate 3D position using offset data (matching original implementation)
-            Calculate3DJointPositionFromHeatmap(jointIndex, maxX, maxY, maxZ);
-        }
-
-        // Calculate derived joint positions (hip, neck, head) - from original implementation
-        CalculateDerivedJointsOriginal();
-
-        // Apply filtering
-        ApplyKalmanFilter();
         
+        // Calculate derived joint positions
+        CalculateDerivedJoints();
+        
+        // Apply filtering
+        ApplyFiltering();
+    }
+    
+    /// <summary>
+    /// Find maximum activation position for a specific joint
+    /// </summary>
+    private void FindMaxActivation(int jointIndex)
+    {
+        int maxXIndex = 0, maxYIndex = 0, maxZIndex = 0;
+        _jointPoints[jointIndex].score3D = 0.0f;
+        
+        int jj = jointIndex * heatMapCol;
+        
+        for (int z = 0; z < heatMapCol; z++)
+        {
+            int zz = jj + z;
+            for (int y = 0; y < heatMapCol; y++)
+            {
+                int yy = y * _heatMapColSquared * JointNum + zz;
+                for (int x = 0; x < heatMapCol; x++)
+                {
+                    float value = _heatMap3D[yy + x * _heatMapColJointNum];
+                    if (value > _jointPoints[jointIndex].score3D)
+                    {
+                        _jointPoints[jointIndex].score3D = value;
+                        maxXIndex = x;
+                        maxYIndex = y;
+                        maxZIndex = z;
+                    }
+                }
+            }
+        }
+        
+        // Calculate 3D position from offsets
+        CalculateJointPosition(jointIndex, maxXIndex, maxYIndex, maxZIndex);
+    }
+    
+    /// <summary>
+    /// Calculate final joint position from maximum activation indices
+    /// </summary>
+    private void CalculateJointPosition(int jointIndex, int maxX, int maxY, int maxZ)
+    {
+        int baseIndex = maxY * _cubeOffsetSquared + maxX * _cubeOffsetLinear;
+        
+        // X coordinate
+        _jointPoints[jointIndex].Now3D.x = 
+            (_offset3D[baseIndex + jointIndex * heatMapCol + maxZ] + 0.5f + maxX) * _imageScale - _inputImageSizeHalf;
+        
+        // Y coordinate (flipped)
+        _jointPoints[jointIndex].Now3D.y = 
+            _inputImageSizeHalf - (_offset3D[baseIndex + (jointIndex + JointNum) * heatMapCol + maxZ] + 0.5f + maxY) * _imageScale;
+        
+        // Z coordinate
+        _jointPoints[jointIndex].Now3D.z = 
+            (_offset3D[baseIndex + (jointIndex + _jointNumSquared) * heatMapCol + maxZ] + 0.5f + (maxZ - 14)) * _imageScale;
+    }
+    
+    /// <summary>
+    /// Calculate derived joint positions (hip, neck, head)
+    /// </summary>
+    private void CalculateDerivedJoints()
+    {
+        // Calculate hip location
+        var leftThigh = _jointPoints[PositionIndex.lThighBend.Int()].Now3D;
+        var rightThigh = _jointPoints[PositionIndex.rThighBend.Int()].Now3D;
+        var abdomenUpper = _jointPoints[PositionIndex.abdomenUpper.Int()].Now3D;
+        var hipCenter = (leftThigh + rightThigh) / 2f;
+        _jointPoints[PositionIndex.hip.Int()].Now3D = (abdomenUpper + hipCenter) / 2f;
+        
+        // Calculate neck location
+        var leftShoulder = _jointPoints[PositionIndex.lShldrBend.Int()].Now3D;
+        var rightShoulder = _jointPoints[PositionIndex.rShldrBend.Int()].Now3D;
+        _jointPoints[PositionIndex.neck.Int()].Now3D = (leftShoulder + rightShoulder) / 2f;
+        
+        // Calculate head location
+        var leftEar = _jointPoints[PositionIndex.lEar.Int()].Now3D;
+        var rightEar = _jointPoints[PositionIndex.rEar.Int()].Now3D;
+        var earCenter = (leftEar + rightEar) / 2f;
+        var neck = _jointPoints[PositionIndex.neck.Int()].Now3D;
+        var headVector = earCenter - neck;
+        var normalizedHeadVector = Vector3.Normalize(headVector);
+        var noseVector = _jointPoints[PositionIndex.Nose.Int()].Now3D - neck;
+        _jointPoints[PositionIndex.head.Int()].Now3D = neck + normalizedHeadVector * Vector3.Dot(normalizedHeadVector, noseVector);
+    }
+    
+    #endregion
+    
+    #region Filtering
+    
+    /// <summary>
+    /// Apply Kalman and low-pass filtering to joint positions
+    /// </summary>
+    private void ApplyFiltering()
+    {
+        // Apply Kalman filter to all joints
+        foreach (var jointPoint in _jointPoints)
+        {
+            ApplyKalmanFilter(jointPoint);
+        }
+        
+        // Apply low-pass filter if enabled
         if (useLowPassFilter)
         {
             ApplyLowPassFilter();
         }
-        
-        /*/ Apply pose to avatar through retargeter
-        if (poseRetargeter != null)// && poseRetargeter.IsInitialized
-        {
-            poseRetargeter.ApplyPose(m_JointPoints);
-        }*/
-        
-        // Debug logging
-        if (verbose && m_FrameCounter % 60 == 0)
-        {
-            LogPoseDebugInfo();
-        }
-    }
-
-    /// <summary>
-    /// Find maximum activation in 3D heatmap for specific joint (original algorithm)
-    /// </summary>
-    private void FindMaxActivationIn3DHeatmap(int jointIndex, out int maxX, out int maxY, out int maxZ, out float maxScore)
-    {
-        maxX = maxY = maxZ = 0;
-        maxScore = 0.0f;
-        
-        int jointOffset = jointIndex * heatMapCol;
-        
-        // Scan through 3D heatmap volume (matching original nested loop structure)
-        for (int z = 0; z < heatMapCol; z++)
-        {
-            int zIndex = jointOffset + z;
-            
-            for (int y = 0; y < heatMapCol; y++)
-            {
-                int yIndex = y * m_HeatMapColSquared * JOINT_NUM + zIndex;
-                
-                for (int x = 0; x < heatMapCol; x++)
-                {
-                    int dataIndex = yIndex + x * m_HeatMapColJointNum;
-                    
-                    // Check bounds to prevent array access errors
-                    if (dataIndex >= 0 && dataIndex < m_HeatMap3D.Length)
-                    {
-                        float value = m_HeatMap3D[dataIndex];
-                        
-                        if (value > maxScore)
-                        {
-                            maxScore = value;
-                            maxX = x;
-                            maxY = y;
-                            maxZ = z;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    /// <summary>
-    /// Calculate 3D position from heatmap indices and offset (original algorithm)
-    /// </summary>
-    private void Calculate3DJointPositionFromHeatmap(int jointIndex, int maxX, int maxY, int maxZ)
-    {
-        try
-        {
-            int baseIndex = maxY * m_CubeOffsetSquared + maxX * m_CubeOffsetLinear;
-            
-            // Calculate X coordinate (original formula)
-            int xOffsetIndex = baseIndex + jointIndex * heatMapCol + maxZ;
-            if (xOffsetIndex >= 0 && xOffsetIndex < m_Offset3D.Length)
-            {
-                float offsetX = m_Offset3D[xOffsetIndex];
-                m_JointPoints[jointIndex].Now3D.x = (offsetX + 0.5f + maxX) * m_ImageScale - m_InputImageSizeHalf;
-            }
-            
-            // Calculate Y coordinate (original formula with inversion)
-            int yOffsetIndex = baseIndex + (jointIndex + JOINT_NUM) * heatMapCol + maxZ;
-            if (yOffsetIndex >= 0 && yOffsetIndex < m_Offset3D.Length)
-            {
-                float offsetY = m_Offset3D[yOffsetIndex];
-                m_JointPoints[jointIndex].Now3D.y = m_InputImageSizeHalf - (offsetY + 0.5f + maxY) * m_ImageScale;
-            }
-            
-            // Calculate Z coordinate (original formula)
-            int zOffsetIndex = baseIndex + (jointIndex + JOINT_NUM_2D) * heatMapCol + maxZ;
-            if (zOffsetIndex >= 0 && zOffsetIndex < m_Offset3D.Length)
-            {
-                float offsetZ = m_Offset3D[zOffsetIndex];
-                m_JointPoints[jointIndex].Now3D.z = (offsetZ + 0.5f + (maxZ - 14)) * m_ImageScale;
-            }
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogWarning($"Error calculating joint {jointIndex} position: {e.Message}");
-        }
-    }
-
-    /// <summary>
-    /// Calculate derived joints exactly as in original implementation
-    /// </summary>
-    private void CalculateDerivedJointsOriginal()
-    {
-        try
-        {
-            // Calculate hip location (original algorithm)
-            Vector3 leftThigh = m_JointPoints[PositionIndex.lThighBend.Int()].Now3D;
-            Vector3 rightThigh = m_JointPoints[PositionIndex.rThighBend.Int()].Now3D;
-            Vector3 hipCenter = (leftThigh + rightThigh) / 2f;
-            m_JointPoints[PositionIndex.hip.Int()].Now3D = 
-                (m_JointPoints[PositionIndex.abdomenUpper.Int()].Now3D + hipCenter) / 2f;
-
-            // Calculate neck location (original algorithm)
-            Vector3 leftShoulder = m_JointPoints[PositionIndex.lShldrBend.Int()].Now3D;
-            Vector3 rightShoulder = m_JointPoints[PositionIndex.rShldrBend.Int()].Now3D;
-            m_JointPoints[PositionIndex.neck.Int()].Now3D = (leftShoulder + rightShoulder) / 2f;
-
-            // Calculate head location (original algorithm)
-            Vector3 leftEar = m_JointPoints[PositionIndex.lEar.Int()].Now3D;
-            Vector3 rightEar = m_JointPoints[PositionIndex.rEar.Int()].Now3D;
-            Vector3 earCenter = (leftEar + rightEar) / 2f;
-            Vector3 neckPos = m_JointPoints[PositionIndex.neck.Int()].Now3D;
-            
-            Vector3 headVector = earCenter - neckPos;
-            Vector3 normalizedHeadVector = Vector3.Normalize(headVector);
-            Vector3 noseVector = m_JointPoints[PositionIndex.Nose.Int()].Now3D - neckPos;
-            
-            m_JointPoints[PositionIndex.head.Int()].Now3D = 
-                neckPos + normalizedHeadVector * Vector3.Dot(normalizedHeadVector, noseVector);
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogWarning($"Error calculating derived joints: {e.Message}");
-        }
     }
     
     /// <summary>
-    /// Log pose debug information
-    /// </summary>
-    private void LogPoseDebugInfo()
-    {
-        if (m_JointPoints == null) return;
-        
-        // Log a few key joint positions and scores
-        var hip = m_JointPoints[PositionIndex.hip.Int()];
-        var neck = m_JointPoints[PositionIndex.neck.Int()];
-        var head = m_JointPoints[PositionIndex.head.Int()];
-        
-        Debug.Log($"VNect Pose Debug - Hip: {hip.Now3D} (score: {hip.score3D:F3}), " +
-                  $"Neck: {neck.Now3D} (score: {neck.score3D:F3}), " +
-                  $"Head: {head.Now3D} (score: {head.score3D:F3})");
-    }
-    #endregion
-
-    #region Filtering
-    /// <summary>
-    /// Apply Kalman filter to all joint points for temporal smoothing
-    /// </summary>
-    private void ApplyKalmanFilter()
-    {
-        foreach (var jointPoint in m_JointPoints)
-        {
-            ApplyKalmanFilterToJoint(jointPoint);
-        }
-    }
-
-    /// <summary>
     /// Apply Kalman filter to a single joint point
     /// </summary>
-    private void ApplyKalmanFilterToJoint(VNectModel.JointPoint jointPoint)
+    private void ApplyKalmanFilter(VNectModel.JointPoint jointPoint)
     {
         // Measurement update
-        UpdateKalmanMeasurement(jointPoint);
+        UpdateKalmanGain(jointPoint);
         
         // State update
         jointPoint.Pos3D.x = jointPoint.X.x + (jointPoint.Now3D.x - jointPoint.X.x) * jointPoint.K.x;
@@ -727,78 +558,105 @@ public class VNectSentisRunner : MonoBehaviour
         jointPoint.Pos3D.z = jointPoint.X.z + (jointPoint.Now3D.z - jointPoint.X.z) * jointPoint.K.z;
         jointPoint.X = jointPoint.Pos3D;
     }
-
+    
     /// <summary>
-    /// Update Kalman filter measurement parameters
+    /// Update Kalman gain and covariance
     /// </summary>
-    private void UpdateKalmanMeasurement(VNectModel.JointPoint jointPoint)
+    private void UpdateKalmanGain(VNectModel.JointPoint jointPoint)
     {
-        float denomX = jointPoint.P.x + kalmanParamQ + kalmanParamR;
-        float denomY = jointPoint.P.y + kalmanParamQ + kalmanParamR;
-        float denomZ = jointPoint.P.z + kalmanParamQ + kalmanParamR;
+        // Calculate Kalman gain for each axis
+        jointPoint.K.x = (jointPoint.P.x + kalmanParamQ) / (jointPoint.P.x + kalmanParamQ + kalmanParamR);
+        jointPoint.K.y = (jointPoint.P.y + kalmanParamQ) / (jointPoint.P.y + kalmanParamQ + kalmanParamR);
+        jointPoint.K.z = (jointPoint.P.z + kalmanParamQ) / (jointPoint.P.z + kalmanParamQ + kalmanParamR);
         
-        jointPoint.K.x = (jointPoint.P.x + kalmanParamQ) / denomX;
-        jointPoint.K.y = (jointPoint.P.y + kalmanParamQ) / denomY;
-        jointPoint.K.z = (jointPoint.P.z + kalmanParamQ) / denomZ;
-        
-        jointPoint.P.x = kalmanParamR * (jointPoint.P.x + kalmanParamQ) / denomX;
-        jointPoint.P.y = kalmanParamR * (jointPoint.P.y + kalmanParamQ) / denomY;
-        jointPoint.P.z = kalmanParamR * (jointPoint.P.z + kalmanParamQ) / denomZ;
+        // Update covariance
+        jointPoint.P.x = kalmanParamR * (jointPoint.P.x + kalmanParamQ) / (kalmanParamR + jointPoint.P.x + kalmanParamQ);
+        jointPoint.P.y = kalmanParamR * (jointPoint.P.y + kalmanParamQ) / (kalmanParamR + jointPoint.P.y + kalmanParamQ);
+        jointPoint.P.z = kalmanParamR * (jointPoint.P.z + kalmanParamQ) / (kalmanParamR + jointPoint.P.z + kalmanParamQ);
     }
-
+    
     /// <summary>
-    /// Apply low pass filter for additional smoothing
+    /// Apply low-pass filter to all joint points
     /// </summary>
     private void ApplyLowPassFilter()
     {
-        foreach (var jointPoint in m_JointPoints)
+        foreach (var jointPoint in _jointPoints)
         {
+            // Update position history
             jointPoint.PrevPos3D[0] = jointPoint.Pos3D;
-            
             for (int i = 1; i < jointPoint.PrevPos3D.Length; i++)
             {
                 jointPoint.PrevPos3D[i] = jointPoint.PrevPos3D[i] * lowPassParam + 
                                          jointPoint.PrevPos3D[i - 1] * (1f - lowPassParam);
             }
-            
             jointPoint.Pos3D = jointPoint.PrevPos3D[jointPoint.PrevPos3D.Length - 1];
         }
     }
+    
     #endregion
-
+    
     #region Resource Management
-    /// <summary>
-    /// Safely dispose of a tensor
-    /// </summary>
-    private void DisposeTensorSafely(Tensor<float> tensor)
-    {
-        tensor?.Dispose();
-    }
-
+    
     /// <summary>
     /// Clean up all allocated resources
     /// </summary>
     private void CleanupResources()
     {
-        // Dispose input tensors
-        foreach (var kvp in m_InputTensors)
+        try
         {
-            DisposeTensorSafely(kvp.Value);
+            // Dispose input tensors
+            if (_inputTensors != null)
+            {
+                foreach (var tensor in _inputTensors.Values)
+                {
+                    tensor?.Dispose();
+                }
+                _inputTensors.Clear();
+            }
+            
+            // Dispose worker and model
+            _worker?.Dispose();
+            
+            if (verbose)
+            {
+                Debug.Log("VNect resources cleaned up successfully");
+            }
         }
-        m_InputTensors.Clear();
-
-        // Dispose output tensors
-        DisposeTensorSafely(m_Output3DOffset);
-        DisposeTensorSafely(m_Output3DHeatMap);
-        DisposeTensorSafely(m_CurrentInput);
-
-        // Dispose worker and model
-        m_Worker?.Dispose();
-        
-        if (verbose)
+        catch (Exception e)
         {
-            Debug.Log("VNect Sentis Runner resources cleaned up");
+            Debug.LogError($"Error during resource cleanup: {e.Message}");
         }
     }
+    
+    #endregion
+    
+    #region Public API
+    
+    /// <summary>
+    /// Check if the model is ready for inference
+    /// </summary>
+    public bool IsModelReady => _isModelReady;
+    
+    /// <summary>
+    /// Check if currently processing a frame
+    /// </summary>
+    public bool IsProcessing => _isProcessing;
+    
+    /// <summary>
+    /// Get current joint points
+    /// </summary>
+    public VNectModel.JointPoint[] GetJointPoints() => _jointPoints;
+    
+    /// <summary>
+    /// Manually trigger model reinitialization
+    /// </summary>
+    public void ReinitializeModel()
+    {
+        StopAllCoroutines();
+        _isModelReady = false;
+        CleanupResources();
+        InitializeSystem();
+    }
+    
     #endregion
 }
