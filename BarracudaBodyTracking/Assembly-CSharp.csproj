@@ -46,10 +46,11 @@
     <Analyzer Include="/Applications/Unity/6000.0.34f1/Unity.app/Contents/Tools/Unity.SourceGenerators/Unity.UIToolkit.SourceGenerator.dll" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Assets/Scripts/VNectBarracudaRunner.cs" />
+    <Compile Include="Assets/Scripts/VNectSentisRunner.cs" />
     <Compile Include="Assets/Scripts/VNectModel.cs" />
     <Compile Include="Assets/Scripts/CameraMover.cs" />
     <Compile Include="Assets/Scripts/VideoCapture.cs" />
+    <Compile Include="Assets/Scripts/VNectPoseRetargeter.cs" />
     <Compile Include="Assets/Scripts/info.cs" />
     <None Include="Assets/Scripts/Model/AddOnnxHere.txt" />
     <Reference Include="UnityEngine">
@@ -405,9 +406,6 @@
     </Reference>
     <Reference Include="nunit.framework">
       <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/PackageCache/com.unity.ext.nunit/net40/unity-custom/nunit.framework.dll</HintPath>
-    </Reference>
-    <Reference Include="Google.Protobuf">
-      <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/PackageCache/com.unity.barracuda/Barracuda/Runtime/Plugins/ProtoBuffer/Google.Protobuf.dll</HintPath>
     </Reference>
     <Reference Include="Mono.Cecil">
       <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/PackageCache/com.unity.nuget.mono-cecil/Mono.Cecil.dll</HintPath>
@@ -796,9 +794,6 @@
     <Reference Include="mscorlib">
       <HintPath>/Applications/Unity/6000.0.34f1/Unity.app/Contents/NetStandard/compat/2.1.0/shims/netfx/mscorlib.dll</HintPath>
     </Reference>
-    <Reference Include="Unity.Barracuda">
-      <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.Barracuda.dll</HintPath>
-    </Reference>
     <Reference Include="UnityEditor.UI">
       <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/UnityEditor.UI.dll</HintPath>
     </Reference>
@@ -808,23 +803,17 @@
     <Reference Include="Unity.Rider.Editor">
       <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.Rider.Editor.dll</HintPath>
     </Reference>
+    <Reference Include="Unity.Sentis.iOSBLAS">
+      <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.Sentis.iOSBLAS.dll</HintPath>
+    </Reference>
     <Reference Include="Unity.Collections.Editor">
       <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.Collections.Editor.dll</HintPath>
-    </Reference>
-    <Reference Include="Unity.AI.Navigation">
-      <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.AI.Navigation.dll</HintPath>
     </Reference>
     <Reference Include="Unity.RenderPipelines.ShaderGraph.ShaderGraphLibrary">
       <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.RenderPipelines.ShaderGraph.ShaderGraphLibrary.dll</HintPath>
     </Reference>
-    <Reference Include="Unity.Barracuda.iOSBLAS">
-      <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.Barracuda.iOSBLAS.dll</HintPath>
-    </Reference>
-    <Reference Include="Unity.Multiplayer.Center.Common">
-      <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.Multiplayer.Center.Common.dll</HintPath>
-    </Reference>
-    <Reference Include="Unity.AI.Navigation.Updater">
-      <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.AI.Navigation.Updater.dll</HintPath>
+    <Reference Include="Unity.Sentis">
+      <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.Sentis.dll</HintPath>
     </Reference>
     <Reference Include="Unity.TextMeshPro">
       <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.TextMeshPro.dll</HintPath>
@@ -835,20 +824,17 @@
     <Reference Include="Unity.ShaderGraph.Editor">
       <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.ShaderGraph.Editor.dll</HintPath>
     </Reference>
-    <Reference Include="Unity.Barracuda.BurstBLAS">
-      <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.Barracuda.BurstBLAS.dll</HintPath>
-    </Reference>
     <Reference Include="Unity.RenderPipelines.Core.Editor.Shared">
       <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.RenderPipelines.Core.Editor.Shared.dll</HintPath>
     </Reference>
-    <Reference Include="Unity.AI.Navigation.Editor">
-      <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.AI.Navigation.Editor.dll</HintPath>
+    <Reference Include="Unity.Mathematics">
+      <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.Mathematics.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UI">
       <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/UnityEngine.UI.dll</HintPath>
     </Reference>
-    <Reference Include="Unity.Mathematics">
-      <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.Mathematics.dll</HintPath>
+    <Reference Include="Unity.Sentis.Editor">
+      <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.Sentis.Editor.dll</HintPath>
     </Reference>
     <Reference Include="Unity.RenderPipelines.Core.Editor">
       <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.RenderPipelines.Core.Editor.dll</HintPath>
@@ -856,20 +842,8 @@
     <Reference Include="Unity.RenderPipelines.Core.ShaderLibrary">
       <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.RenderPipelines.Core.ShaderLibrary.dll</HintPath>
     </Reference>
-    <Reference Include="Unity.Multiplayer.Center.Editor">
-      <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.Multiplayer.Center.Editor.dll</HintPath>
-    </Reference>
-    <Reference Include="Unity.Barracuda.ONNX">
-      <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.Barracuda.ONNX.dll</HintPath>
-    </Reference>
-    <Reference Include="Unity.Barracuda.Editor">
-      <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.Barracuda.Editor.dll</HintPath>
-    </Reference>
     <Reference Include="Unity.Mathematics.Editor">
       <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.Mathematics.Editor.dll</HintPath>
-    </Reference>
-    <Reference Include="Unity.AI.Navigation.Editor.ConversionSystem">
-      <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.AI.Navigation.Editor.ConversionSystem.dll</HintPath>
     </Reference>
     <Reference Include="Unity.RenderPipelines.GPUDriven.Runtime">
       <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.RenderPipelines.GPUDriven.Runtime.dll</HintPath>
@@ -883,17 +857,20 @@
     <Reference Include="Unity.Collections">
       <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.Collections.dll</HintPath>
     </Reference>
-    <Reference Include="Unity.Barracuda.MacBLAS">
-      <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.Barracuda.MacBLAS.dll</HintPath>
-    </Reference>
     <Reference Include="Unity.Burst">
       <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.Burst.dll</HintPath>
     </Reference>
     <Reference Include="Unity.RenderPipelines.Core.Runtime">
       <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.RenderPipelines.Core.Runtime.dll</HintPath>
     </Reference>
+    <Reference Include="Unity.Sentis.MacBLAS">
+      <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.Sentis.MacBLAS.dll</HintPath>
+    </Reference>
     <Reference Include="Unity.Rendering.LightTransport.Editor">
       <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.Rendering.LightTransport.Editor.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.Sentis.ONNX">
+      <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.Sentis.ONNX.dll</HintPath>
     </Reference>
     <Reference Include="Unity.Rendering.LightTransport.Runtime">
       <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.Rendering.LightTransport.Runtime.dll</HintPath>

@@ -129,7 +129,8 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 92433104}
-  - component: {fileID: 92433103}
+  - component: {fileID: 92433105}
+  - component: {fileID: 92433106}
   m_Layer: 0
   m_Name: BarracudadRunner
   m_TagString: Untagged
@@ -137,31 +138,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &92433103
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 92433102}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a27889227d895094c8cd75784aa13cc2, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  NNModel: {fileID: 5022602860645237092, guid: 5a2831596f2c2436c83bb8e0c8f524e2, type: 3}
-  WorkerType: 32768
-  Verbose: 0
-  VNectModel: {fileID: 1034608948}
-  videoCapture: {fileID: 1848773650}
-  InputImageSize: 448
-  HeatMapCol: 28
-  KalmanParamQ: 0.001
-  KalmanParamR: 0.0015
-  UseLowPassFilter: 0
-  LowPassParam: 0.1
-  WaitTimeModelLoad: 5
-  InitImg: {fileID: 2800000, guid: ad05e7fc23ec7df40acf63ce37cc522f, type: 3}
 --- !u!4 &92433104
 Transform:
   m_ObjectHideFlags: 0
@@ -177,6 +153,52 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &92433105
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 92433102}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 379144f4e6dd943cba2a96924f04882c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  modelAsset: {fileID: 5022602860645237092, guid: 5a2831596f2c2436c83bb8e0c8f524e2,
+    type: 3}
+  backendType: 256
+  verbose: 1
+  vNectModel: {fileID: 1034608948}
+  videoCapture: {fileID: 1848773650}
+  poseRetargeter: {fileID: 92433106}
+  inputImageSize: 448
+  heatMapCol: 28
+  kalmanParamQ: 0.001
+  kalmanParamR: 0.0015
+  useLowPassFilter: 0
+  lowPassParam: 0.1
+  initImg: {fileID: 2800000, guid: ad05e7fc23ec7df40acf63ce37cc522f, type: 3}
+  waitTimeModelLoad: 5
+--- !u!114 &92433106
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 92433102}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 341edacf753914bb5919456255bc0bfc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetAvatar: {fileID: 1034608949}
+  enableSmoothing: 1
+  smoothingFactor: 0.1
+  enableDebugVisualization: 0
+  poseScale: 1
+  enableHeightNormalization: 1
+  referenceHeight: 1.8
 --- !u!1 &116302815
 GameObject:
   m_ObjectHideFlags: 0
@@ -459,6 +481,21 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1919840562988403317, guid: a9c417137d3965745b6459ee29ace6f2,
         type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.4
+      objectReference: {fileID: 0}
+    - target: {fileID: 1919840562988403317, guid: a9c417137d3965745b6459ee29ace6f2,
+        type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0.4
+      objectReference: {fileID: 0}
+    - target: {fileID: 1919840562988403317, guid: a9c417137d3965745b6459ee29ace6f2,
+        type: 3}
+      propertyPath: m_LocalScale.z
+      value: 0.4
+      objectReference: {fileID: 0}
+    - target: {fileID: 1919840562988403317, guid: a9c417137d3965745b6459ee29ace6f2,
+        type: 3}
       propertyPath: m_LocalPosition.x
       value: -0
       objectReference: {fileID: 0}
@@ -507,6 +544,11 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 1919840562988403317, guid: a9c417137d3965745b6459ee29ace6f2,
+        type: 3}
+      propertyPath: m_ConstrainProportionsScale
+      value: 1
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
@@ -553,6 +595,12 @@ MonoBehaviour:
   ModelObject: {fileID: 1034608946}
   Nose: {fileID: 1242464908}
   ZScale: 1
+--- !u!95 &1034608949 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: 5493691456806647245, guid: a9c417137d3965745b6459ee29ace6f2,
+    type: 3}
+  m_PrefabInstance: {fileID: 1034608945}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1064655611
 GameObject:
   m_ObjectHideFlags: 0
