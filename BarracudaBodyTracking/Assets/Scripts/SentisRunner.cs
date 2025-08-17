@@ -28,17 +28,15 @@ public class SentisRunner : MonoBehaviour
     
     #region Component References
     
-    [FormerlySerializedAs("vNectModel")]
     [Header("Component References")]
-    [Tooltip("VNect model component for pose visualization")]
-    public SkeletonModel skeletonModel;
-    
+
     [Tooltip("Video capture component for input")]
     public VideoCapture videoCapture;
     
     [Tooltip("Initial image for model warm-up")]
     public Texture2D initImage;
-    
+
+    [SerializeField] private PoseProcessor _poseProcessor;
     #endregion
     
     #region Input/Output Configuration
@@ -46,31 +44,10 @@ public class SentisRunner : MonoBehaviour
     [Header("Input Configuration")]
     [Tooltip("Input image size (width and height)")]
     public int inputImageSize = 448;
-    
-    [Tooltip("Heatmap resolution")]
-    public int heatMapCol = 28;
-    
+
     [Header("Model Loading")]
     [Tooltip("Wait time after model loading before starting inference")]
     public float waitTimeModelLoad = 10f;
-    
-    #endregion
-    
-    #region Filtering Parameters
-    
-    [Header("Filtering Parameters")]
-    [Tooltip("Kalman filter process noise parameter")]
-    public float kalmanParamQ = 0.001f;
-    
-    [Tooltip("Kalman filter measurement noise parameter")]
-    public float kalmanParamR = 0.0015f;
-    
-    [Tooltip("Enable low pass filter for smoothing")]
-    public bool useLowPassFilter = true;
-    
-    [Tooltip("Low pass filter smoothing parameter")]
-    [Range(0f, 1f)]
-    public float lowPassParam = 0.8f;
     
     #endregion
     
@@ -81,38 +58,10 @@ public class SentisRunner : MonoBehaviour
     
     #endregion
     
-    #region Private Fields - Processing Data
-    
-    private SkeletonModel.JointPoint[] _jointPoints;
-    private const int JointNum = 24;
-    
-    // Calculated dimensions
-    private float _inputImageSizeHalf;
-    private float _inputImageSizeF;
-    private int _heatMapColSquared;
-    private int _heatMapColCubed;
-    private float _imageScale;
-    private float _unit;
-    
-    // Index calculations
-    private int _jointNumSquared = JointNum * 2;
-    private int _jointNumCubed = JointNum * 3;
-    private int _heatMapColJointNum;
-    private int _cubeOffsetLinear;
-    private int _cubeOffsetSquared;
-    
-    // Buffer arrays
-    private float[] _heatMap3D;
-    private float[] _offset3D;
-    
-    #endregion
     
     #region Private Fields - Input Management
-    
-    // Input tensor names based on model specification
-    private const string InputName1 = "input.1";
-    private const string InputName4 = "input.4"; 
-    private const string InputName7 = "input.7";
+
+    private string _input1Name, _input2Name, _input3Name;
     
     // Output indices based on model specification
     private const int Output2Index = 2; // 530: offset 3D
@@ -155,7 +104,7 @@ public class SentisRunner : MonoBehaviour
     {
         try
         {
-            InitializeParameters();
+            _poseProcessor.InitializeParameters();
             InitializeModel();
             InitializeInputTensors();
             
@@ -170,33 +119,7 @@ public class SentisRunner : MonoBehaviour
         }
     }
     
-    /// <summary>
-    /// Initialize calculation parameters and buffer arrays
-    /// </summary>
-    private void InitializeParameters()
-    {
-        // Calculate derived dimensions
-        _heatMapColSquared = heatMapCol * heatMapCol;
-        _heatMapColCubed = heatMapCol * heatMapCol * heatMapCol;
-        _heatMapColJointNum = heatMapCol * JointNum;
-        _cubeOffsetLinear = heatMapCol * _jointNumCubed;
-        _cubeOffsetSquared = _heatMapColSquared * _jointNumCubed;
-        
-        // Initialize buffer arrays
-        _heatMap3D = new float[JointNum * _heatMapColCubed];
-        _offset3D = new float[JointNum * _heatMapColCubed * 3];
-        
-        // Calculate scaling parameters
-        _unit = 1f / (float)heatMapCol;
-        _inputImageSizeF = inputImageSize;
-        _inputImageSizeHalf = _inputImageSizeF / 2f;
-        _imageScale = inputImageSize / (float)heatMapCol;
-        
-        if (verbose)
-        {
-            Debug.Log($"VNect parameters initialized - Image size: {inputImageSize}, Heatmap: {heatMapCol}");
-        }
-    }
+    
     
     /// <summary>
     /// Initialize the Sentis model and worker
@@ -210,6 +133,11 @@ public class SentisRunner : MonoBehaviour
         
         _model = ModelLoader.Load(modelAsset);
         _worker = new Worker(_model,backendType);
+        
+        // Get the actual input names from the model
+        _input1Name = _model.inputs[0].name;
+        _input2Name = _model.inputs[1].name;
+        _input3Name = _model.inputs[2].name;
         
         if (verbose)
         {
@@ -288,22 +216,14 @@ public class SentisRunner : MonoBehaviour
             // Execute model for warmup
             _worker.Schedule();
             yield return null; // let the scheduled work run
-            
-// Get outputs (GPU tensors)
-            var offset3DGpu   = _worker.PeekOutput(_model.outputs[Output2Index].name) as Tensor<float>;
-            var heatMap3DGpu  = _worker.PeekOutput(_model.outputs[Output3Index].name) as Tensor<float>;
 
-// Read back to CPU and use the returned clones
-            using var offset3D = offset3DGpu.ReadbackAndClone();    // CPU tensor
-            using var heatMap3D = heatMap3DGpu.ReadbackAndClone();  // CPU tensor
-            _offset3D = offset3D.DownloadToArray(); //Flatten to float[]
-            _heatMap3D = heatMap3D.DownloadToArray();
+            GetOutputs();
             
             // Initialize joint points
-            _jointPoints = skeletonModel.Init();
+            _poseProcessor.InitJoints();
             
             // Process initial pose
-            PredictPose();
+            _poseProcessor.PredictPose();
             
             // Wait for specified time
             yield return new WaitForSeconds(waitTimeModelLoad);
@@ -332,48 +252,41 @@ public class SentisRunner : MonoBehaviour
     /// </summary>
     private void ProcessFrame()
     {
-        if (videoCapture?.MainTexture == null)
-            return;
-        
         _isProcessing = true;
-        StartCoroutine(ExecuteModelAsync());
+        StartCoroutine(ExecuteModel());
     }
     
     /// <summary>
-    /// Execute model inference asynchronously
+    /// Execute model inference 
     /// </summary>
-    private IEnumerator ExecuteModelAsync()
+    private IEnumerator ExecuteModel()
     {
-        //try
-        {
-            // Update input tensors with new frame
-            UpdateInputTensors();
+        // Update input tensors with new frame
+        UpdateInputTensors();
             
-            // Execute model
-            _worker.Schedule();
-            yield return null; // let the scheduled work run
-            
-// Get outputs (GPU tensors)
-            var offset3DGpu   = _worker.PeekOutput(_model.outputs[Output2Index].name) as Tensor<float>;
-            var heatMap3DGpu  = _worker.PeekOutput(_model.outputs[Output3Index].name) as Tensor<float>;
+        // Execute model
+        _worker.Schedule();
+        yield return null; // let the scheduled work run
 
-// Read back to CPU and use the returned clones
-            using var offset3D = offset3DGpu.ReadbackAndClone();    // CPU tensor
-            using var heatMap3D = heatMap3DGpu.ReadbackAndClone();  // CPU tensor
-            _offset3D = offset3D.DownloadToArray(); //Flatten to float[]
-            _heatMap3D = heatMap3D.DownloadToArray();
+        GetOutputs();
             
-            // Process pose prediction
-            PredictPose();
-        }
-        /*catch (Exception e)
-        {
-            Debug.LogError($"Model execution failed: {e.Message}");
-        }
-        finally*/
-        {
-            _isProcessing = false;
-        }
+        // Process pose prediction
+        _poseProcessor.PredictPose();
+        
+        _isProcessing = false;
+    }
+
+    private void GetOutputs()
+    {
+        // Get outputs (GPU tensors)
+        var offset3DGpu   = _worker.PeekOutput(_model.outputs[Output2Index].name) as Tensor<float>;
+        var heatMap3DGpu  = _worker.PeekOutput(_model.outputs[Output3Index].name) as Tensor<float>;
+
+        // Read back to CPU and use the returned clones
+        using var offset3D = offset3DGpu.ReadbackAndClone();    // CPU tensor
+        using var heatMap3D = heatMap3DGpu.ReadbackAndClone();  // CPU tensor
+        _poseProcessor.offset3D = offset3D.DownloadToArray(); //Flatten to float[]
+        _poseProcessor.heatMap3D = heatMap3D.DownloadToArray();
     }
     
     /// <summary>
@@ -383,33 +296,28 @@ public class SentisRunner : MonoBehaviour
     {
         var newTensor = CreateInputTensor(videoCapture.MainTexture);
         
-        // Get the actual input names from the model
-        string input1Name = _model.inputs[0].name;
-        string input2Name = _model.inputs[1].name;
-        string input3Name = _model.inputs[2].name;
-        
         // Dispose oldest tensor and shift the ring buffer
-        if (_inputTensors.ContainsKey(input3Name))
+        if (_inputTensors.ContainsKey(_input3Name))
         {
-            _inputTensors[input3Name]?.Dispose();
+            _inputTensors[_input3Name]?.Dispose();
         }
         
         // Shift tensors in ring buffer
-        if (_inputTensors.ContainsKey(input2Name))
+        if (_inputTensors.ContainsKey(_input2Name))
         {
-            _inputTensors[input3Name] = _inputTensors[input2Name];
-            _worker.SetInput(input3Name, _inputTensors[input3Name]);
+            _inputTensors[_input3Name] = _inputTensors[_input2Name];
+            _worker.SetInput(_input3Name, _inputTensors[_input3Name]);
         }
         
-        if (_inputTensors.ContainsKey(input1Name))
+        if (_inputTensors.ContainsKey(_input1Name))
         {
-            _inputTensors[input2Name] = _inputTensors[input1Name];
-            _worker.SetInput(input2Name, _inputTensors[input2Name]);
+            _inputTensors[_input2Name] = _inputTensors[_input1Name];
+            _worker.SetInput(_input2Name, _inputTensors[_input2Name]);
         }
         
         // Set new tensor
-        _inputTensors[input1Name] = newTensor;
-        _worker.SetInput(input1Name, newTensor);
+        _inputTensors[_input1Name] = newTensor;
+        _worker.SetInput(_input1Name, newTensor);
     }
     
     /// <summary>
@@ -422,192 +330,7 @@ public class SentisRunner : MonoBehaviour
     
     #endregion
     
-    #region Pose Prediction
     
-    /// <summary>
-    /// Predict 3D joint positions from network outputs
-    /// </summary>
-    private void PredictPose()
-    {
-        // Find maximum activation for each joint
-        for (int j = 0; j < JointNum; j++)
-        {
-            FindMaxActivation(j);
-        }
-        
-        // Calculate derived joint positions
-        CalculateDerivedJoints();
-        
-        // Apply filtering
-        ApplyFiltering();
-    }
-    
-    /// <summary>
-    /// Find maximum activation position for a specific joint
-    /// </summary>
-    private void FindMaxActivation(int jointIndex)
-    {
-        int maxXIndex = 0, maxYIndex = 0, maxZIndex = 0;
-        _jointPoints[jointIndex].score3D = 0.0f;
-        
-        int jj = jointIndex * heatMapCol;
-        
-        // NCHW: (1, 672, 28, 28) where channel = j*heatMapCol + z
-        for (int z = 0; z < heatMapCol; z++)
-        {
-            int c = jointIndex * heatMapCol + z;                  // channel index
-            int cBase = c * _heatMapColSquared;                   // stride = H*W
-            for (int y = 0; y < heatMapCol; y++)
-            {
-                int row = cBase + y * heatMapCol;
-                for (int x = 0; x < heatMapCol; x++)
-                {
-                    float v = _heatMap3D[row + x];
-                    if (v > _jointPoints[jointIndex].score3D)
-                    {
-                        _jointPoints[jointIndex].score3D = v;
-                        maxXIndex = x; maxYIndex = y; maxZIndex = z;
-                    }
-                }
-            }
-        }
-
-        
-        // Calculate 3D position from offsets
-        CalculateJointPosition(jointIndex, maxXIndex, maxYIndex, maxZIndex);
-    }
-    
-    /// <summary>
-    /// Calculate final joint position from maximum activation indices
-    /// </summary>
-    private void CalculateJointPosition(int jointIndex, int maxX, int maxY, int maxZ)
-    {
-        // NCHW: (1, 2016, 28, 28) = 3 * (24 * 28) channels
-        int channelsPerAxis = JointNum * heatMapCol; // 24*28 = 672
-
-        int cX = /* axis 0 */ 0 * channelsPerAxis + jointIndex * heatMapCol + maxZ;
-        int cY = /* axis 1 */ 1 * channelsPerAxis + jointIndex * heatMapCol + maxZ;
-        int cZ = /* axis 2 */ 2 * channelsPerAxis + jointIndex * heatMapCol + maxZ;
-
-        int baseX = cX * _heatMapColSquared + maxY * heatMapCol + maxX;
-        int baseY = cY * _heatMapColSquared + maxY * heatMapCol + maxX;
-        int baseZ = cZ * _heatMapColSquared + maxY * heatMapCol + maxX;
-
-        float offX = _offset3D[baseX];
-        float offY = _offset3D[baseY];
-        float offZ = _offset3D[baseZ];
-
-        _jointPoints[jointIndex].Now3D.x =
-            (offX + 0.5f + maxX) * _imageScale - _inputImageSizeHalf;
-
-// flip Y for Unity
-        _jointPoints[jointIndex].Now3D.y =
-            _inputImageSizeHalf - (offY + 0.5f + maxY) * _imageScale;
-
-        _jointPoints[jointIndex].Now3D.z =
-            (offZ + 0.5f + (maxZ - 14)) * _imageScale;
-    }
-    
-    /// <summary>
-    /// Calculate derived joint positions (hip, neck, head)
-    /// </summary>
-    private void CalculateDerivedJoints()
-    {
-        // Calculate hip location
-        var leftThigh = _jointPoints[PositionIndex.lThighBend.Int()].Now3D;
-        var rightThigh = _jointPoints[PositionIndex.rThighBend.Int()].Now3D;
-        var abdomenUpper = _jointPoints[PositionIndex.abdomenUpper.Int()].Now3D;
-        var hipCenter = (leftThigh + rightThigh) / 2f;
-        _jointPoints[PositionIndex.hip.Int()].Now3D = (abdomenUpper + hipCenter) / 2f;
-        
-        // Calculate neck location
-        var leftShoulder = _jointPoints[PositionIndex.lShldrBend.Int()].Now3D;
-        var rightShoulder = _jointPoints[PositionIndex.rShldrBend.Int()].Now3D;
-        _jointPoints[PositionIndex.neck.Int()].Now3D = (leftShoulder + rightShoulder) / 2f;
-        
-        // Calculate head location
-        var leftEar = _jointPoints[PositionIndex.lEar.Int()].Now3D;
-        var rightEar = _jointPoints[PositionIndex.rEar.Int()].Now3D;
-        var earCenter = (leftEar + rightEar) / 2f;
-        var neck = _jointPoints[PositionIndex.neck.Int()].Now3D;
-        var headVector = earCenter - neck;
-        var normalizedHeadVector = Vector3.Normalize(headVector);
-        var noseVector = _jointPoints[PositionIndex.Nose.Int()].Now3D - neck;
-        _jointPoints[PositionIndex.head.Int()].Now3D = neck + normalizedHeadVector * Vector3.Dot(normalizedHeadVector, noseVector);
-    }
-    
-    #endregion
-    
-    #region Filtering
-    
-    /// <summary>
-    /// Apply Kalman and low-pass filtering to joint positions
-    /// </summary>
-    private void ApplyFiltering()
-    {
-        // Apply Kalman filter to all joints
-        foreach (var jointPoint in _jointPoints)
-        {
-            ApplyKalmanFilter(jointPoint);
-        }
-        
-        // Apply low-pass filter if enabled
-        if (useLowPassFilter)
-        {
-            ApplyLowPassFilter();
-        }
-    }
-    
-    /// <summary>
-    /// Apply Kalman filter to a single joint point
-    /// </summary>
-    private void ApplyKalmanFilter(SkeletonModel.JointPoint jointPoint)
-    {
-        // Measurement update
-        UpdateKalmanGain(jointPoint);
-        
-        // State update
-        jointPoint.Pos3D.x = jointPoint.X.x + (jointPoint.Now3D.x - jointPoint.X.x) * jointPoint.K.x;
-        jointPoint.Pos3D.y = jointPoint.X.y + (jointPoint.Now3D.y - jointPoint.X.y) * jointPoint.K.y;
-        jointPoint.Pos3D.z = jointPoint.X.z + (jointPoint.Now3D.z - jointPoint.X.z) * jointPoint.K.z;
-        jointPoint.X = jointPoint.Pos3D;
-    }
-    
-    /// <summary>
-    /// Update Kalman gain and covariance
-    /// </summary>
-    private void UpdateKalmanGain(SkeletonModel.JointPoint jointPoint)
-    {
-        // Calculate Kalman gain for each axis
-        jointPoint.K.x = (jointPoint.P.x + kalmanParamQ) / (jointPoint.P.x + kalmanParamQ + kalmanParamR);
-        jointPoint.K.y = (jointPoint.P.y + kalmanParamQ) / (jointPoint.P.y + kalmanParamQ + kalmanParamR);
-        jointPoint.K.z = (jointPoint.P.z + kalmanParamQ) / (jointPoint.P.z + kalmanParamQ + kalmanParamR);
-        
-        // Update covariance
-        jointPoint.P.x = kalmanParamR * (jointPoint.P.x + kalmanParamQ) / (kalmanParamR + jointPoint.P.x + kalmanParamQ);
-        jointPoint.P.y = kalmanParamR * (jointPoint.P.y + kalmanParamQ) / (kalmanParamR + jointPoint.P.y + kalmanParamQ);
-        jointPoint.P.z = kalmanParamR * (jointPoint.P.z + kalmanParamQ) / (kalmanParamR + jointPoint.P.z + kalmanParamQ);
-    }
-    
-    /// <summary>
-    /// Apply low-pass filter to all joint points
-    /// </summary>
-    private void ApplyLowPassFilter()
-    {
-        foreach (var jointPoint in _jointPoints)
-        {
-            // Update position history
-            jointPoint.PrevPos3D[0] = jointPoint.Pos3D;
-            for (int i = 1; i < jointPoint.PrevPos3D.Length; i++)
-            {
-                jointPoint.PrevPos3D[i] = jointPoint.PrevPos3D[i] * lowPassParam + 
-                                         jointPoint.PrevPos3D[i - 1] * (1f - lowPassParam);
-            }
-            jointPoint.Pos3D = jointPoint.PrevPos3D[jointPoint.PrevPos3D.Length - 1];
-        }
-    }
-    
-    #endregion
     
     #region Resource Management
     
@@ -655,11 +378,6 @@ public class SentisRunner : MonoBehaviour
     /// Check if currently processing a frame
     /// </summary>
     public bool IsProcessing => _isProcessing;
-    
-    /// <summary>
-    /// Get current joint points
-    /// </summary>
-    public SkeletonModel.JointPoint[] GetJointPoints() => _jointPoints;
     
     /// <summary>
     /// Manually trigger model reinitialization

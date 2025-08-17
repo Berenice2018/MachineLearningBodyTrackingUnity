@@ -132,7 +132,7 @@ GameObject:
   - component: {fileID: 92433105}
   - component: {fileID: 92433106}
   m_Layer: 0
-  m_Name: BarracudadRunner
+  m_Name: SentisRunner
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -169,16 +169,12 @@ MonoBehaviour:
     type: 3}
   backendType: 256
   verbose: 1
-  vNectModel: {fileID: 1034608948}
   videoCapture: {fileID: 1848773650}
   initImage: {fileID: 2800000, guid: ad05e7fc23ec7df40acf63ce37cc522f, type: 3}
+  _poseProcessor: {fileID: 92433106}
   inputImageSize: 448
   heatMapCol: 28
   waitTimeModelLoad: 5
-  kalmanParamQ: 0.001
-  kalmanParamR: 0.0015
-  useLowPassFilter: 0
-  lowPassParam: 0.1
 --- !u!114 &92433106
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -186,17 +182,20 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 92433102}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 341edacf753914bb5919456255bc0bfc, type: 3}
+  m_Script: {fileID: 11500000, guid: fdd21fc7fffa6485daa97b4e4e6169b7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  targetAvatar: {fileID: 1034608949}
-  debugDraw: 0
-  enableHeightNormalization: 1
-  referenceHeight: 1.8
-  poseScale: 1
-  smoothing: 0.1
+  skeletonModel: {fileID: 1034608948}
+  heatMapCol: 28
+  inputImageSize: 448
+  kalmanParamQ: 0.001
+  kalmanParamR: 0.0015
+  useLowPassFilter: 1
+  lowPassParam: 0.1
+  heatMap3D: []
+  offset3D: []
 --- !u!1 &116302815
 GameObject:
   m_ObjectHideFlags: 0
@@ -598,12 +597,6 @@ MonoBehaviour:
   ModelObject: {fileID: 1034608946}
   Nose: {fileID: 1242464908}
   ZScale: 1
---- !u!95 &1034608949 stripped
-Animator:
-  m_CorrespondingSourceObject: {fileID: 5493691456806647245, guid: a9c417137d3965745b6459ee29ace6f2,
-    type: 3}
-  m_PrefabInstance: {fileID: 1034608945}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1064655611
 GameObject:
   m_ObjectHideFlags: 0
