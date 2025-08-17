@@ -285,8 +285,12 @@ public class SentisRunner : MonoBehaviour
         // Read back to CPU and use the returned clones
         using var offset3D = offset3DGpu.ReadbackAndClone();    // CPU tensor
         using var heatMap3D = heatMap3DGpu.ReadbackAndClone();  // CPU tensor
-        _poseProcessor.offset3D = offset3D.DownloadToArray(); //Flatten to float[]
-        _poseProcessor.heatMap3D = heatMap3D.DownloadToArray();
+        
+        // Push into NativeArrays inside PoseProcessor (no per-frame Native allocations)
+        _poseProcessor.UploadNetworkOutputs(
+            offset3D.DownloadToArray(),
+            heatMap3D.DownloadToArray()
+        );
     }
     
     /// <summary>

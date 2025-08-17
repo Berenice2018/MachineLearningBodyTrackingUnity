@@ -173,7 +173,6 @@ MonoBehaviour:
   initImage: {fileID: 2800000, guid: ad05e7fc23ec7df40acf63ce37cc522f, type: 3}
   _poseProcessor: {fileID: 92433106}
   inputImageSize: 448
-  heatMapCol: 28
   waitTimeModelLoad: 5
 --- !u!114 &92433106
 MonoBehaviour:
@@ -190,12 +189,11 @@ MonoBehaviour:
   skeletonModel: {fileID: 1034608948}
   heatMapCol: 28
   inputImageSize: 448
+  useBurstJobs: 1
   kalmanParamQ: 0.001
   kalmanParamR: 0.0015
-  useLowPassFilter: 1
+  useLowPassFilter: 0
   lowPassParam: 0.1
-  heatMap3D: []
-  offset3D: []
 --- !u!1 &116302815
 GameObject:
   m_ObjectHideFlags: 0
