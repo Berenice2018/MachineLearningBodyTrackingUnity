@@ -151,7 +151,7 @@ public class PoseProcessor : MonoBehaviour
     {
         if (!useBurstJobs)
         {
-            // Fallback to scalar main-thread version if you ever need it again
+            // Fallback to scalar main-thread version if we ever need it again
             ScalarPredictPose();
             return;
         }
