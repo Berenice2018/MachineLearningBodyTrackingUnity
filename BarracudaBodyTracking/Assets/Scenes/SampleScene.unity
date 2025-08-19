@@ -212,7 +212,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &92433104
 Transform:
   m_ObjectHideFlags: 0
@@ -245,6 +245,7 @@ MonoBehaviour:
   backendType: 256
   verbose: 1
   videoCapture: {fileID: 1848773650}
+  yolo: {fileID: 1982916436}
   initImage: {fileID: 2800000, guid: ad05e7fc23ec7df40acf63ce37cc522f, type: 3}
   _poseProcessor: {fileID: 92433106}
   inputImageSize: 448
@@ -1641,7 +1642,7 @@ Transform:
   m_GameObject: {fileID: 1848773649}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -2.65, y: 2.21, z: -0.32}
+  m_LocalPosition: {x: -2.65, y: 0, z: -0.32}
   m_LocalScale: {x: 1.5, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1774,6 +1775,7 @@ MonoBehaviour:
   boundingBoxPrefab: {fileID: 395630050329436971, guid: b090d0d8ae6d248a080de0d1ef13e9da,
     type: 3}
   overlayCanvas: {fileID: 1991036632}
+  cropSize: 448
 --- !u!1 &1991036631
 GameObject:
   m_ObjectHideFlags: 0
@@ -2089,8 +2091,8 @@ SceneRoots:
   - {fileID: 963194228}
   - {fileID: 705507995}
   - {fileID: 1064655614}
-  - {fileID: 92433104}
   - {fileID: 1982916434}
+  - {fileID: 92433104}
   - {fileID: 1848773653}
   - {fileID: 116302817}
   - {fileID: 1034608945}

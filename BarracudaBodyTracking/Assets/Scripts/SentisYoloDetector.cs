@@ -11,12 +11,14 @@ public class SentisYOLODetector : MonoBehaviour
     public int inputImageSize = 640;
 
     [Header("Input Source")]
-    public VideoCapture videoCapture;  // your video texture
+    public VideoCapture videoCapture;  // video texture
 
     [Header("UI")]
     public RectTransform boundingBoxPrefab;  // prefab with Image/Outline
-    public Transform overlayCanvas;          // parent canvas
-
+    public Transform overlayCanvas;          // parent canvas or panel
+    public RenderTexture CroppedTexture { get; private set; }
+    [SerializeField] private int cropSize = 448; // match SentisRunner input
+    
     private Model _model;
     private Worker _worker;
     private string _inputName;
@@ -57,10 +59,13 @@ public class SentisYOLODetector : MonoBehaviour
 
         Rect? human = DetectHuman(output);
 
-        DrawHumanBox(human);
-
-
         //PrintHumanDetection(output);
+        //DrawHumanBox(human);
+        
+        if (human.HasValue)
+        {
+            CropAndStore(tex, human.Value);
+        }
     }
 
     private List<(Rect box, int classId, float score)> DecodeYOLOv11(Tensor<float> output, float confThresh = 0.4f, float iouThresh = 0.45f)
@@ -199,6 +204,58 @@ public class SentisYOLODetector : MonoBehaviour
             box.offsetMin = box.offsetMax = Vector2.zero;
         }
     }
+
+    
+    private void CropAndStore(Texture source, Rect humanBox)
+{
+    // Expand YOLO box by 20% in both directions
+    float expandFactor = 0.2f;
+    float newX = humanBox.xMin - humanBox.width * expandFactor * 0.5f;
+    float newY = humanBox.yMin - humanBox.height * expandFactor * 0.5f;
+    float newW = humanBox.width  * (1f + expandFactor);
+    float newH = humanBox.height * (1f + expandFactor);
+
+    // Clamp to [0–1] range
+    newX = Mathf.Clamp01(newX);
+    newY = Mathf.Clamp01(newY);
+    if (newX + newW > 1f) newW = 1f - newX;
+    if (newY + newH > 1f) newH = 1f - newY;
+
+    // Convert normalized rect → pixel coords
+    int px = Mathf.RoundToInt(newX * source.width);
+    int py = Mathf.RoundToInt(newY * source.height);
+    int pw = Mathf.RoundToInt(newW * source.width);
+    int ph = Mathf.RoundToInt(newH * source.height);
+
+    // Maintain aspect ratio: choose the larger side and make square crop
+    int side = Mathf.Max(pw, ph);
+    // expand crop region to a square, centered on original box
+    int cx = px + pw / 2;
+    int cy = py + ph / 2;
+    px = Mathf.Clamp(cx - side / 2, 0, source.width - side);
+    py = Mathf.Clamp(cy - side / 2, 0, source.height - side);
+    pw = Mathf.Min(side, source.width - px);
+    ph = Mathf.Min(side, source.height - py);
+
+    // Lazy-init RT
+    if (CroppedTexture == null || CroppedTexture.width != cropSize || CroppedTexture.height != cropSize)
+    {
+        CroppedTexture = new RenderTexture(cropSize, cropSize, 0, RenderTextureFormat.ARGB32);
+    }
+
+    // Copy square region from source → CroppedTexture (scaled down to cropSize)
+    RenderTexture.active = CroppedTexture;
+    GL.PushMatrix();
+    GL.LoadPixelMatrix(0, cropSize, cropSize, 0);
+    Graphics.DrawTexture(
+        new Rect(0, 0, cropSize, cropSize),     // target rect
+        source,
+        new Rect((float)px / source.width, (float)py / source.height,
+                 (float)pw / source.width, (float)ph / source.height), // source rect
+        0, 0, 0, 0);
+    GL.PopMatrix();
+    RenderTexture.active = null;
+}
 
 
     private void DrawBoxes(List<Rect> boxes)

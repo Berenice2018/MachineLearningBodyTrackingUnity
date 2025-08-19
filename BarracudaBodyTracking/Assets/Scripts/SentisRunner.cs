@@ -32,7 +32,10 @@ public class SentisRunner : MonoBehaviour
 
     [Tooltip("Video capture component for input")]
     public VideoCapture videoCapture;
-    
+
+    [SerializeField] private SentisYOLODetector yolo;
+    public Texture ExternalInputTexture { get; set; } //cropped image from YOLO detector
+
     [Tooltip("Initial image for model warm-up")]
     public Texture2D initImage;
 
@@ -61,6 +64,7 @@ public class SentisRunner : MonoBehaviour
     
     #region Private Fields - Input Management
 
+    private Texture _inputTextureToUse;
     private string _input1Name, _input2Name, _input3Name;
     
     // Output indices based on model specification
@@ -84,6 +88,11 @@ public class SentisRunner : MonoBehaviour
     {
         if (_isModelReady && !_isProcessing)
         {
+            if (yolo.CroppedTexture != null)
+            {
+                ExternalInputTexture = yolo.CroppedTexture;
+            }
+
             ProcessFrame();
         }
     }
@@ -228,11 +237,11 @@ public class SentisRunner : MonoBehaviour
             // Wait for specified time
             yield return new WaitForSeconds(waitTimeModelLoad);
             
-            // Initialize video capture
+            /*/ Initialize video capture
             if (videoCapture != null)
             {
                 videoCapture.Init(inputImageSize, inputImageSize);
-            }
+            }*/
             
             _isModelReady = true;
             Debug.Log("Model warmup completed and ready for inference");
@@ -298,7 +307,8 @@ public class SentisRunner : MonoBehaviour
     /// </summary>
     private void UpdateInputTensors()
     {
-        var newTensor = CreateInputTensor(videoCapture.MainTexture);
+        _inputTextureToUse = ExternalInputTexture != null ? ExternalInputTexture : videoCapture.MainTexture;
+        var newTensor = CreateInputTensor(_inputTextureToUse);
         
         // Dispose oldest tensor and shift the ring buffer
         if (_inputTensors.ContainsKey(_input3Name))

@@ -48,8 +48,6 @@
   <ItemGroup>
     <Compile Include="Assets/Scripts/SkeletonModel.cs" />
     <Compile Include="Assets/Scripts/SentisRunner.cs" />
-    <Compile Include="Assets/Scripts/YOLOv11HumanDetector.cs" />
-    <Compile Include="Assets/Scripts/Yolov11Runner.cs" />
     <Compile Include="Assets/Scripts/PoseProcessor.cs" />
     <Compile Include="Assets/Scripts/SentisYoloDetector.cs" />
     <Compile Include="Assets/Scripts/CameraMover.cs" />
