@@ -1,9 +1,7 @@
 using UnityEngine;
-using UnityEngine.UI;
 using Unity.Sentis;
 using System.Collections.Generic;
 using System.Collections;
-using UnityEngine.Serialization;
 
 public class SentisYOLODetector : MonoBehaviour
 {
@@ -49,11 +47,20 @@ public class SentisYOLODetector : MonoBehaviour
         _worker.Schedule();
         yield return null;
 
+        /*using var output = _worker.PeekOutput(_outputName).ReadbackAndClone() as Tensor<float>;
+        List<(Rect box, int classId, float score)> results = DecodeYOLOv11(output);
+// pass only Rects
+        List<Rect> rects = results.ConvertAll(r => r.box);
+        DrawBoxes(rects);*/
+        
         using var output = _worker.PeekOutput(_outputName).ReadbackAndClone() as Tensor<float>;
-        var results = DecodeYOLOv11(output);
 
-        PrintHumanDetection(output);
-        //DrawBoxes(results);
+        Rect? human = DetectHuman(output);
+
+        DrawHumanBox(human);
+
+
+        //PrintHumanDetection(output);
     }
 
     private List<(Rect box, int classId, float score)> DecodeYOLOv11(Tensor<float> output, float confThresh = 0.4f, float iouThresh = 0.45f)
@@ -126,6 +133,71 @@ public class SentisYOLODetector : MonoBehaviour
         float inter = Mathf.Max(0, x2 - x1) * Mathf.Max(0, y2 - y1);
         float union = a.width * a.height + b.width * b.height - inter;
         return inter / union;
+    }
+
+    private Rect? DetectHuman(Tensor<float> output, float confThresh = 0.4f)
+    {
+        var data = output.DownloadToArray();
+        int numClasses = output.shape[1] - 4;   // e.g. 80
+        int numBoxes = output.shape[2];         // e.g. 8400
+
+        int targetClass = 0; // COCO class 0 = person
+        float bestScore = 0f;
+        Rect bestBox = new Rect();
+
+        for (int i = 0; i < numBoxes; i++)
+        {
+            float x = data[0 * numBoxes + i];
+            float y = data[1 * numBoxes + i];
+            float w = data[2 * numBoxes + i];
+            float h = data[3 * numBoxes + i];
+
+            float score = data[(4 + targetClass) * numBoxes + i];
+            if (score < confThresh || score < bestScore) continue;
+
+            // normalize to [0–1]
+            float xMin = (x - w / 2f) / inputImageSize;
+            float yMin = (y - h / 2f) / inputImageSize;
+            float boxW = w / inputImageSize;
+            float boxH = h / inputImageSize;
+
+            bestScore = score;
+            bestBox = new Rect(xMin, yMin, boxW, boxH);
+        }
+
+        if (bestScore > 0f)
+            return bestBox;
+
+        return null;
+    }
+
+    private void DrawHumanBox(Rect? humanBox)
+    {
+        // Hide all previous boxes
+        foreach (var b in _boxPool) b.gameObject.SetActive(false);
+
+        if (humanBox.HasValue)
+        {
+            Rect rect = humanBox.Value;
+
+            RectTransform box;
+            if (_boxPool.Count == 0)
+            {
+                box = Instantiate(boundingBoxPrefab, overlayCanvas);
+                _boxPool.Add(box);
+            }
+            else
+            {
+                box = _boxPool[0];
+            }
+
+            box.gameObject.SetActive(true);
+
+            // Map normalized box [0–1] to canvas anchors
+            box.anchorMin = new Vector2(rect.xMin, rect.yMin);
+            box.anchorMax = new Vector2(rect.xMax, rect.yMax);
+            box.offsetMin = box.offsetMax = Vector2.zero;
+        }
     }
 
 
