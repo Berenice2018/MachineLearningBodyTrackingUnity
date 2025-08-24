@@ -431,12 +431,12 @@ PrefabInstance:
     - target: {fileID: 1919840562988403317, guid: a9c417137d3965745b6459ee29ace6f2,
         type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0
+      value: -1.09
       objectReference: {fileID: 0}
     - target: {fileID: 1919840562988403317, guid: a9c417137d3965745b6459ee29ace6f2,
         type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0
+      value: 2.03
       objectReference: {fileID: 0}
     - target: {fileID: 1919840562988403317, guid: a9c417137d3965745b6459ee29ace6f2,
         type: 3}
@@ -569,7 +569,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &642201223
 RectTransform:
   m_ObjectHideFlags: 0
@@ -889,7 +889,9 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 0}
     m_RemovedComponents: []
-    m_RemovedGameObjects: []
+    m_RemovedGameObjects:
+    - {fileID: 8766024632898161151, guid: 473ecd79d070d4aaf8667b266e60455c, type: 3}
+    - {fileID: 8766024634768935168, guid: 473ecd79d070d4aaf8667b266e60455c, type: 3}
     m_AddedGameObjects: []
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 7957942351869948125, guid: 473ecd79d070d4aaf8667b266e60455c,
@@ -1110,7 +1112,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 0, g: 0.95253086, b: 1, a: 1}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -1118,7 +1120,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   m_FontData:
-    m_Font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
+    m_Font: {fileID: 12800000, guid: e3265ab4bf004d28a9537516768c1c75, type: 3}
     m_FontSize: 60
     m_FontStyle: 0
     m_BestFit: 0
@@ -1347,6 +1349,7 @@ MonoBehaviour:
   m_CameraManager: {fileID: 825591899}
   m_OcclusionManager: {fileID: 825591901}
   m_RawCameraImage: {fileID: 1474869893}
+  m_Detector: {fileID: 896506130}
   m_RawHumanDepthImage: {fileID: 1218579281}
   m_RawHumanStencilImage: {fileID: 456510982}
   m_RawEnvironmentDepthImage: {fileID: 613839500}
@@ -1612,7 +1615,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1268340790
 RectTransform:
   m_ObjectHideFlags: 0
@@ -2373,8 +2376,8 @@ SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
   - {fileID: 1015722067}
-  - {fileID: 1141330383}
   - {fileID: 485666366}
   - {fileID: 825591898}
+  - {fileID: 1141330383}
   - {fileID: 896506131}
   - {fileID: 552101365}

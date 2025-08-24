@@ -34,6 +34,8 @@ namespace UnityEngine.XR.ARFoundation.Samples
         [SerializeField]
         RawImage m_RawCameraImage;
 
+        [SerializeField] SentisYOLODetector m_Detector;
+
         /// <summary>
         /// Get or set the UI RawImage used to display the image on screen.
         /// </summary>
@@ -216,12 +218,7 @@ namespace UnityEngine.XR.ARFoundation.Samples
             m_RawCameraImage.texture = m_CameraTexture;
             
             // Send AR camera texture to YOLO detector
-            var detector = FindObjectOfType<SentisYOLODetector>();
-            if (detector != null)
-            {
-                detector.inputTexture = m_CameraTexture;
-            }
-
+            m_Detector.inputTexture = m_CameraTexture;
         }
 
         /// <summary>
