@@ -11,7 +11,8 @@ public class SentisYOLODetector : MonoBehaviour
     public int inputImageSize = 640;
 
     [Header("Input Source")]
-    public VideoCapture videoCapture;  // video texture
+    //public VideoCapture videoCapture;  // video texture
+    public Texture inputTexture;   // from CpuImageSample
 
     [Header("UI")]
     public RectTransform boundingBoxPrefab;  // prefab with Image/Outline
@@ -32,13 +33,15 @@ public class SentisYOLODetector : MonoBehaviour
         _inputName = _model.inputs[0].name;
         _outputName = _model.outputs[0].name;
 
-        videoCapture.Init(inputImageSize, inputImageSize);
+        //videoCapture.Init(inputImageSize, inputImageSize);
     }
 
     private void Update()
     {
-        if (videoCapture.MainTexture != null)
-            StartCoroutine(RunYOLO(videoCapture.MainTexture));
+        //if (videoCapture.MainTexture != null) StartCoroutine(RunYOLO(videoCapture.MainTexture));
+        if (inputTexture != null)
+            StartCoroutine(RunYOLO(inputTexture));
+
     }
 
     private IEnumerator RunYOLO(Texture tex)
