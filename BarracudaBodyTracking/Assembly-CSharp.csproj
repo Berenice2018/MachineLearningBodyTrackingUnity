@@ -816,11 +816,11 @@
     <Reference Include="mscorlib">
       <HintPath>/Applications/Unity/6000.0.34f1/Unity.app/Contents/NetStandard/compat/2.1.0/shims/netfx/mscorlib.dll</HintPath>
     </Reference>
-    <Reference Include="Unity.RenderPipelines.Universal.2D.Runtime">
-      <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.RenderPipelines.Universal.2D.Runtime.dll</HintPath>
-    </Reference>
     <Reference Include="Unity.XR.Interaction.Toolkit.Editor">
       <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.XR.Interaction.Toolkit.Editor.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.RenderPipelines.Universal.2D.Runtime">
+      <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.RenderPipelines.Universal.2D.Runtime.dll</HintPath>
     </Reference>
     <Reference Include="Unity.InputSystem.ForUI">
       <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.InputSystem.ForUI.dll</HintPath>
@@ -834,11 +834,11 @@
     <Reference Include="Unity.Rider.Editor">
       <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.Rider.Editor.dll</HintPath>
     </Reference>
-    <Reference Include="Unity.XR.OpenXR.Features.ConformanceAutomation">
-      <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.XR.OpenXR.Features.ConformanceAutomation.dll</HintPath>
-    </Reference>
     <Reference Include="Unity.XR.CoreUtils">
       <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.XR.CoreUtils.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.XR.OpenXR.Features.ConformanceAutomation">
+      <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.XR.OpenXR.Features.ConformanceAutomation.dll</HintPath>
     </Reference>
     <Reference Include="Unity.XR.OpenXR.Features.OculusQuestSupport">
       <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.XR.OpenXR.Features.OculusQuestSupport.dll</HintPath>
@@ -933,6 +933,9 @@
     <Reference Include="Unity.Collections.Editor">
       <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.Collections.Editor.dll</HintPath>
     </Reference>
+    <Reference Include="Unity.RenderPipelines.ShaderGraph.ShaderGraphLibrary">
+      <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.RenderPipelines.ShaderGraph.ShaderGraphLibrary.dll</HintPath>
+    </Reference>
     <Reference Include="Unity.Sentis">
       <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.Sentis.dll</HintPath>
     </Reference>
@@ -941,9 +944,6 @@
     </Reference>
     <Reference Include="Unity.XR.ARKit">
       <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.XR.ARKit.dll</HintPath>
-    </Reference>
-    <Reference Include="Unity.RenderPipelines.ShaderGraph.ShaderGraphLibrary">
-      <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.RenderPipelines.ShaderGraph.ShaderGraphLibrary.dll</HintPath>
     </Reference>
     <Reference Include="Unity.XR.Management">
       <HintPath>/Users/admin/Documents/GitHub/SentisKeypointDetection/MachineLearningBodyTrackingUnity/BarracudaBodyTracking/Library/ScriptAssemblies/Unity.XR.Management.dll</HintPath>
