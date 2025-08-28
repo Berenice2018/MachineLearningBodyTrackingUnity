@@ -35,6 +35,8 @@ public class SentisYOLOPoseDetector : MonoBehaviour
         {11,13}, {13,15},                  // left leg
         {12,14}, {14,16}                   // right leg
     };
+    public RectTransform lineUiPrefab; // assign UI Image prefab
+    private List<RectTransform> _lineUiPool = new();
 
     
     private void Start()
@@ -100,7 +102,7 @@ public class SentisYOLOPoseDetector : MonoBehaviour
 
         // 5. Draw on canvas
         DrawKeypoints(keypoints);
-        //DrawSkeleton(keypoints); 
+        DrawSkeletonUI(keypoints); 
     }
     
     private List<Vector3> DecodeYOLOPose(Tensor<float> output, float confThresh = 0.4f)
@@ -177,7 +179,7 @@ public class SentisYOLOPoseDetector : MonoBehaviour
     public LineRenderer linePrefab;
     private List<LineRenderer> _linePool = new();
 
-    private void DrawSkeleton(List<Vector3> keypoints)
+    private void DrawSkeletonWorld(List<Vector3> keypoints)
     {
         // deactivate old lines
         foreach (var ln in _linePool) ln.gameObject.SetActive(false);
@@ -218,7 +220,55 @@ public class SentisYOLOPoseDetector : MonoBehaviour
             line.SetPositions(pts);
         }
     }
+    
+    private void DrawSkeletonUI(List<Vector3> keypoints)
+    {
+        var canvasRect = overlayCanvas.GetComponent<RectTransform>().rect;
+        float canvasW = canvasRect.width;
+        float canvasH = canvasRect.height;
 
+        foreach (var ln in _linePool) ln.gameObject.SetActive(false);
+
+        int numPairs = cocoPairs.GetLength(0);
+        for (int i = 0; i < numPairs; i++)
+        {
+            int a = cocoPairs[i,0];
+            int b = cocoPairs[i,1];
+
+            if (a >= keypoints.Count || b >= keypoints.Count) continue;
+            if (keypoints[a].z < 0.3f || keypoints[b].z < 0.3f) continue;
+
+            float ax = keypoints[a].x * canvasW;
+            float ay = (1f - keypoints[a].y) * canvasH;
+            float bx = keypoints[b].x * canvasW;
+            float by = (1f - keypoints[b].y) * canvasH;
+
+            RectTransform line;
+            if (i < _lineUiPool.Count) line = _lineUiPool[i];
+            else
+            {
+                line = Instantiate(lineUiPrefab, overlayCanvas);
+                _lineUiPool.Add(line);
+            }
+
+            line.gameObject.SetActive(true);
+
+            // start at point A
+            line.anchoredPosition = new Vector2(ax, ay);
+
+            // direction vector
+            Vector2 dir = new Vector2(bx - ax, by - ay);
+            float length = dir.magnitude;
+
+            // stretch and rotate
+            line.sizeDelta = new Vector2(length, 3f); // 3px thick
+            float angle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
+            line.localRotation = Quaternion.Euler(0, 0, angle);
+        }
+    }
+
+    
+    
     private void OnDestroy()
     {
         _worker?.Dispose();
