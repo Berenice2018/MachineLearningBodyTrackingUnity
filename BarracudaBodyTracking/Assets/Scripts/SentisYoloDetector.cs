@@ -11,7 +11,8 @@ public class SentisYOLODetector : MonoBehaviour
     public int inputImageSize = 640;
 
     [Header("Input Source")]
-    public VideoCapture videoCapture;  // video texture
+    //public VideoCapture videoCapture;  // video texture
+    public Texture inputTexture;   // from CpuImageSample
 
     [Header("UI")]
     public RectTransform boundingBoxPrefab;  // prefab with Image/Outline
@@ -32,13 +33,16 @@ public class SentisYOLODetector : MonoBehaviour
         _inputName = _model.inputs[0].name;
         _outputName = _model.outputs[0].name;
 
-        videoCapture.Init(inputImageSize, inputImageSize);
+        //videoCapture.Init(inputImageSize, inputImageSize);
     }
 
     private void Update()
     {
-        if (videoCapture.MainTexture != null)
-            StartCoroutine(RunYOLO(videoCapture.MainTexture));
+        //if (videoCapture.MainTexture != null) StartCoroutine(RunYOLO(videoCapture.MainTexture));
+        if (inputTexture != null)
+            StartCoroutine(RunYOLO(inputTexture));
+        else 
+            Debug.Log("### inputTexture is NULL");
     }
 
     private IEnumerator RunYOLO(Texture tex)
@@ -60,10 +64,10 @@ public class SentisYOLODetector : MonoBehaviour
         Rect? human = DetectHuman(output);
 
         //PrintHumanDetection(output);
-        //DrawHumanBox(human);
         
         if (human.HasValue)
         {
+            DrawHumanBox(human);
             CropAndStore(tex, human.Value);
         }
     }
@@ -315,12 +319,12 @@ public class SentisYOLODetector : MonoBehaviour
 
         if (bestScore > 0f)
         {
-            Debug.Log($"Human detected: Conf {bestScore:F2}, " +
+            Debug.Log($"### Human detected: Conf {bestScore:F2}, " +
                       $"BBox (x:{bestBox.x:F2}, y:{bestBox.y:F2}, w:{bestBox.width:F2}, h:{bestBox.height:F2})");
         }
         else
         {
-            Debug.Log("No human detected");
+            Debug.Log("### No human detected");
         }
     }
 
