@@ -34,7 +34,7 @@ namespace UnityEngine.XR.ARFoundation.Samples
         [SerializeField]
         RawImage m_RawCameraImage;
 
-        [SerializeField] SentisYOLODetector m_Detector;
+        [SerializeField] SentisYoloPoseDetectorCPUImage m_Detector;
 
         /// <summary>
         /// Get or set the UI RawImage used to display the image on screen.

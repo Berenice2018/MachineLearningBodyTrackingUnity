@@ -12,7 +12,7 @@ public class SentisYOLODetector : MonoBehaviour
 
     [Header("Input Source")]
     //public VideoCapture videoCapture;  // video texture
-    public Texture inputTexture;   // from CpuImageSample
+    [HideInInspector]public Texture inputTexture;   // from CpuImageSample
 
     [Header("UI")]
     public RectTransform boundingBoxPrefab;  // prefab with Image/Outline
