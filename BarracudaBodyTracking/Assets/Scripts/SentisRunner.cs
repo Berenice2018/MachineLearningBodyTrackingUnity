@@ -46,7 +46,7 @@ public class SentisRunner : MonoBehaviour
     
     [Header("Input Configuration")]
     [Tooltip("Input image size (width and height)")]
-    public int inputImageSize = 448;
+    public int inputImageSize = 192;
 
     [Header("Model Loading")]
     [Tooltip("Wait time after model loading before starting inference")]
@@ -124,7 +124,7 @@ public class SentisRunner : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogError($"Failed to initialize VNect system: {e.Message}");
+            Debug.LogError($"Failed to initialize network system: {e.Message}");
         }
     }
     

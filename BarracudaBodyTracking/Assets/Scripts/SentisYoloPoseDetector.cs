@@ -170,7 +170,7 @@ public class SentisYOLOPoseDetector : MonoBehaviour
             // Scale normalized coords to canvas
             float cx = keypoints[i].x * canvasW;
             float cy = (1f - keypoints[i].y) * canvasH; // flip Y
-            Debug.Log($"keypoint {i}: x={cx}, y= {cy}");
+            //Debug.Log($"keypoint {i}: x={cx}, y= {cy}");
 
             dot.anchoredPosition = new Vector2(cx, cy);
         }
