@@ -805,7 +805,7 @@ PrefabInstance:
     - target: {fileID: 700150240454407267, guid: a9c417137d3965745b6459ee29ace6f2,
         type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1779665064462175557, guid: a9c417137d3965745b6459ee29ace6f2,
         type: 3}
@@ -840,7 +840,7 @@ PrefabInstance:
     - target: {fileID: 1919840562988403317, guid: a9c417137d3965745b6459ee29ace6f2,
         type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0
+      value: -1.28
       objectReference: {fileID: 0}
     - target: {fileID: 1919840562988403317, guid: a9c417137d3965745b6459ee29ace6f2,
         type: 3}
@@ -899,6 +899,10 @@ PrefabInstance:
         type: 3}
       insertIndex: -1
       addedObject: {fileID: 1034608948}
+    - targetCorrespondingSourceObject: {fileID: 700150240454407267, guid: a9c417137d3965745b6459ee29ace6f2,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1034608949}
   m_SourcePrefab: {fileID: 100100000, guid: a9c417137d3965745b6459ee29ace6f2, type: 3}
 --- !u!1 &1034608946 stripped
 GameObject:
@@ -919,7 +923,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1034608946}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3558338e378282c4a91d1a3356b57301, type: 3}
   m_Name: 
@@ -929,10 +933,26 @@ MonoBehaviour:
   SkeletonX: -1
   SkeletonY: 0.9
   SkeletonZ: 0
-  SkeletonScale: 0.006
+  SkeletonScale: 0.01
   ModelObject: {fileID: 1034608946}
   Nose: {fileID: 1242464908}
   ZScale: 1
+--- !u!114 &1034608949
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1034608946}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dcf1f9bf2d1954d089fc326d9af18daf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ModelObject: {fileID: 1034608946}
+  ShowSkeleton: 1
+  SkeletonScale: 1
+  scale: 4
 --- !u!1 &1064655611
 GameObject:
   m_ObjectHideFlags: 0
@@ -1553,6 +1573,7 @@ GameObject:
   - component: {fileID: 1788672118}
   - component: {fileID: 1788672117}
   - component: {fileID: 1788672120}
+  - component: {fileID: 1788672121}
   m_Layer: 0
   m_Name: MovenetRunner
   m_TagString: Untagged
@@ -1626,10 +1647,34 @@ MonoBehaviour:
   m_GameObject: {fileID: 1788672116}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f0c6e32fefc094f1392e19308e938933, type: 3}
+  m_Script: {fileID: 11500000, guid: c52393b639d1e486d85258b1979fc834, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  skeletonModel: {fileID: 1034608948}
+  baseline3DModelAsset: {fileID: 5022602860645237092, guid: b3317622e6019409bb1a3fa0310268a5,
+    type: 3}
+  skeleton: {fileID: 1034608949}
+  logOnce: 1
+  coco2DVisualizer: {fileID: 1788672121}
+--- !u!114 &1788672121
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1788672116}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0dedde615ebd64ed6839af6b213c4c51, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  showSkeleton: 1
+  showLabels: 1
+  confidenceThreshold: 0.002
+  lineColor: {r: 1, g: 0.04995039, b: 0, a: 1}
+  labelColor: {r: 1, g: 0.07592101, b: 0.015686274, a: 1}
+  pointSize: 0.02
+  scale: 4
+  offset: {x: 0, y: 1, z: 5}
 --- !u!1 &1848773649
 GameObject:
   m_ObjectHideFlags: 0
@@ -1873,7 +1918,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1982916432}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1e3f43033908a4143a048cc7592f7170, type: 3}
   m_Name: 
@@ -1924,7 +1969,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 502.4, y: -52.7}
+  m_AnchoredPosition: {x: 502.4, y: -52.69995}
   m_SizeDelta: {x: 240, y: 240}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1991036633

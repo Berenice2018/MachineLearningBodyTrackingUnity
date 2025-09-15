@@ -37,7 +37,7 @@ public class MovenetRunner : MonoBehaviour
     [Tooltip("Initial image for model warm-up")]
     public Texture2D initImage;
 
-    [SerializeField] private MovenetPoseProcessor _poseProcessor;
+    [SerializeField] private MovenetPoseProcessor3D _poseProcessor;
     #endregion
     
     #region Input/Output Configuration
@@ -96,7 +96,7 @@ public class MovenetRunner : MonoBehaviour
     {
         try
         {
-            _poseProcessor.InitializeParameters();
+           //todo _poseProcessor.InitializeParameters();
             InitializeModel();
             InitializeInputTensors();
             
@@ -170,7 +170,7 @@ public class MovenetRunner : MonoBehaviour
 
         GetOutputs();
         //_poseProcessor.InitJoints();
-        _poseProcessor.PredictPose();
+        //_poseProcessor.PredictPose();
         
         yield return new WaitForSeconds(waitTimeModelLoad);
         
