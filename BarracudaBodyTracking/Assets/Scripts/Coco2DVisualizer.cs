@@ -1,24 +1,18 @@
 using UnityEngine;
+using UnityEngine.UI;
 
 public class Coco2DVisualizer : MonoBehaviour
 {
-    [Header("Debug")]
-    public bool showSkeleton = true;
-    public bool showLabels = true;
-    [Range(0f, 1f)] public float confidenceThreshold = 0.3f;
-    public Color lineColor = Color.cyan;
-    public Color labelColor = Color.yellow;
-    public float pointSize = 0.02f;
-    public float scale = 192f; // match MoveNet input resolution
-    public Vector3 offset = new Vector3(0, 0, 5f); // push in front of camera
+    [Header("References")]
+    public RectTransform canvasRect;     // parent canvas (Screen Space)
+    public GameObject pointPrefab;       // small UI circle prefab
+    public GameObject linePrefab;        // thin UI image prefab
 
-    private static readonly string[] MoveNetJointNames = new string[]
-    {
-        "nose", "lEye", "rEye", "lEar", "rEar",
-        "lShoulder", "rShoulder", "lElbow", "rElbow",
-        "lWrist", "rWrist", "lHip", "rHip",
-        "lKnee", "rKnee", "lAnkle", "rAnkle"
-    };
+    [Range(0f, 1f)] public float confidenceThreshold = 0.3f;
+    public int inputResolution = 192; // must match MoveNet input
+
+    private RectTransform[] pointMarkers;
+    private RectTransform[,] lineMarkers;
 
     private static readonly int[,] CocoEdges = new int[,]
     {
@@ -27,89 +21,110 @@ public class Coco2DVisualizer : MonoBehaviour
         {5,7}, {7,9},                      // left arm
         {6,8}, {8,10},                     // right arm
         {11,12},                           // hips
-        {5,11}, {6,12},                    // torso sides
+        {5,11}, {6,12},                    // torso
         {11,13}, {13,15},                  // left leg
         {12,14}, {14,16}                   // right leg
     };
 
-    private Vector2[] keypoints;
-    private float[] confidences;
-
-    /// <summary>
-    /// Call this with raw MoveNet keypoints [17*3].
-    /// Format: (y, x, confidence).
-    /// </summary>
-    public void SetKeypoints(float[] keypoints2D)
+    void Awake()
     {
-        keypoints = new Vector2[17];
-        confidences = new float[17];
-
+        // Create 17 point markers
+        pointMarkers = new RectTransform[17];
         for (int i = 0; i < 17; i++)
         {
-            float y = keypoints2D[i * 3 + 0];
-            float x = keypoints2D[i * 3 + 1];
-            float c = keypoints2D[i * 3 + 2];
+            var go = Instantiate(pointPrefab, canvasRect);
+            pointMarkers[i] = go.GetComponent<RectTransform>();
+        }
 
-            keypoints[i] = new Vector2(x, y);
-            confidences[i] = c;
+        // Create line markers
+        int edgeCount = CocoEdges.GetLength(0);
+        lineMarkers = new RectTransform[edgeCount, 1];
+        for (int i = 0; i < edgeCount; i++)
+        {
+            var go = Instantiate(linePrefab, canvasRect);
+            lineMarkers[i,0] = go.GetComponent<RectTransform>();
         }
     }
 
-    void OnDrawGizmos()
+    public int targetWidth = 1280;   // camera/video width
+    public int targetHeight = 720;   // camera/video height
+
+    public void SetKeypoints(Vector3[] keypoints)
     {
-        if (!showSkeleton || keypoints == null) return;
-
-        Gizmos.color = lineColor;
-
-#if UNITY_EDITOR
-        GUIStyle style = new GUIStyle();
-        style.normal.textColor = labelColor;
-        style.fontSize = 14;
-#endif
-
-        // Draw points + labels
-        for (int i = 0; i < keypoints.Length; i++)
+        for (int i = 0; i < 17; i++)
         {
-            if (confidences[i] < confidenceThreshold) continue;
-
-            Vector3 p = new Vector3(
-                (keypoints[i].x - 0.5f) * scale,
-                -(keypoints[i].y - 0.5f) * scale,
-                0
-            ) + offset;
-
-            Gizmos.DrawSphere(p, pointSize);
-
-#if UNITY_EDITOR
-            if (showLabels)
+            if (keypoints[i].z < confidenceThreshold)
             {
-                Vector3 labelPos = p + new Vector3(0.03f, 0.02f, 0);
-                UnityEditor.Handles.Label(labelPos, MoveNetJointNames[i], style);
+                pointMarkers[i].gameObject.SetActive(false);
+                continue;
             }
-#endif
+
+            pointMarkers[i].gameObject.SetActive(true);
+
+            // 🔥 convert normalized MoveNet coords to pixels
+            Vector2 pos = MoveNetToPixel(keypoints[i], targetWidth, targetHeight, flipY:true);
+            pointMarkers[i].anchoredPosition = pos;
         }
 
-        // Draw edges
-        for (int i = 0; i < CocoEdges.GetLength(0); i++)
+        // Edges: same conversion
+        for (int e = 0; e < CocoEdges.GetLength(0); e++)
         {
-            int a = CocoEdges[i, 0];
-            int b = CocoEdges[i, 1];
-            if (confidences[a] < confidenceThreshold || confidences[b] < confidenceThreshold)
+            int a = CocoEdges[e,0];
+            int b = CocoEdges[e,1];
+
+            if (keypoints[a].z < confidenceThreshold || keypoints[b].z < confidenceThreshold)
+            {
+                lineMarkers[e,0].gameObject.SetActive(false);
                 continue;
+            }
 
-            Vector3 p1 = new Vector3(
-                (keypoints[a].x - 0.5f) * scale,
-                -(keypoints[a].y - 0.5f) * scale,
-                0
-            ) + offset;
+            lineMarkers[e,0].gameObject.SetActive(true);
 
-            Vector3 p2 = new Vector3(
-                (keypoints[b].x - 0.5f) * scale,
-                -(keypoints[b].y - 0.5f) * scale,
-                0
-            ) + offset;
+            Vector2 posA = MoveNetToPixel(keypoints[a], targetWidth, targetHeight, flipY:true);
+            Vector2 posB = MoveNetToPixel(keypoints[b], targetWidth, targetHeight, flipY:true);
 
-            Gizmos.DrawLine(p1, p2);
+            DrawLine(lineMarkers[e,0], posA, posB);
         }
     }
+
+    /// <summary>
+    /// Convert MoveNet keypoints (x,y in [0,1]) into pixel coordinates
+    /// matching the YOLO output space.
+    /// </summary>
+    public static Vector2 MoveNetToPixel(Vector3 kp, int imageWidth, int imageHeight, bool flipY = true)
+    {
+        float px = kp.x * imageWidth;
+        float py = kp.y * imageHeight;
+
+        if (flipY)
+            py = imageHeight - py; // flip so (0,0)=top-left
+
+        return new Vector2(px, py);
+    }
+
+    
+    private Vector2 ToPixel(Vector3 kp)
+    {
+        // Convert normalized [0,1] into canvas space
+        float px = kp.x * canvasRect.sizeDelta.x;
+        float py = (kp.y) * canvasRect.sizeDelta.y;
+        return new Vector2(px, py);
+    }
+
+    private void DrawLine(RectTransform line, Vector2 start, Vector2 end)
+    {
+        Vector2 diff = end - start;
+        float dist = diff.magnitude;
+
+        // Set line size (x = length, y = thickness)
+        line.sizeDelta = new Vector2(dist, 2f);
+
+        // Position at midpoint
+        line.anchoredPosition = (start + end) * 0.5f;
+
+        // Rotate to angle
+        float angle = Mathf.Atan2(diff.y, diff.x) * Mathf.Rad2Deg;
+        line.localRotation = Quaternion.Euler(0, 0, angle);
+    }
+
 }

@@ -76,7 +76,7 @@ public class MovenetRunner : MonoBehaviour
     {
         if (_isModelReady && !_isProcessing)
         {
-            if (yolo != null && yolo.CroppedTexture != null)
+            if (yolo && yolo.CroppedTexture)
                 ExternalInputTexture = yolo.CroppedTexture;
 
             ProcessFrame();
@@ -205,13 +205,51 @@ public class MovenetRunner : MonoBehaviour
         // MoveNet typically has one output tensor: [1,1,17,3]
         var keypointsGpu = _worker.PeekOutput(_model.outputs[0].name) as Tensor<float>;
         using var keypoints = keypointsGpu.ReadbackAndClone();
-        
-        _poseProcessor.UploadNetworkOutputs(keypoints.DownloadToArray());
+        var data = keypoints.DownloadToArray();
+
+        // If we have YOLO crop info, remap back into source image space
+        if (yolo && yolo.LastCropRect.width > 0f)
+        {
+            float cropX = yolo.LastCropRect.x;
+            float cropY = yolo.LastCropRect.y;
+            float cropW = yolo.LastCropRect.width;
+            float cropH = yolo.LastCropRect.height;
+
+            // Create an array for remapped keypoints
+            float[] remapped = new float[data.Length];
+
+            for (int i = 0; i < 17; i++)
+            {
+                float ny = data[i * 3 + 0]; // normalized y in [0,1] square
+                float nx = data[i * 3 + 1]; // normalized x
+                float conf = data[i * 3 + 2];
+
+                // Map back to YOLO crop rect
+                float realX = cropX + nx * cropW;
+                float realY = cropY + ny * cropH;
+
+                remapped[i * 3 + 0] = realY;   // keep same ordering: (y, x, conf)
+                remapped[i * 3 + 1] = realX;
+                remapped[i * 3 + 2] = conf;
+
+                if (verbose && i < 5)  // only log first 5 for debug
+                    Debug.Log($"[Joint {i}] x={realX:F3}, y={realY:F3}, conf={conf:F2}");
+            }
+
+            // Send remapped keypoints into pose processor
+            _poseProcessor.UploadNetworkOutputs(remapped);
+        }
+        else
+        {
+            // fallback: just upload raw (square-space) keypoints
+            _poseProcessor.UploadNetworkOutputs(data);
+        }
     }
+
     
     private void UpdateInputTensors()
     {
-        _inputTextureToUse = ExternalInputTexture != null ? ExternalInputTexture : videoCapture.MainTexture;
+        _inputTextureToUse = ExternalInputTexture ? ExternalInputTexture : videoCapture.MainTexture;
         var newTensor = CreateInputTensor(_inputTextureToUse);
 
         if (_inputTensors.ContainsKey(_inputName))
@@ -223,8 +261,28 @@ public class MovenetRunner : MonoBehaviour
     
     private Tensor<float> CreateInputTensor(Texture texture)
     {
-        return TextureConverter.ToTensor(texture, inputImageSize, inputImageSize, 3);
+        // Configure transform: resize → NHWC layout → channel swizzle (BGRA → RGB)
+        var tt = new TextureTransform()
+            .SetDimensions(inputImageSize, inputImageSize, 3)
+            .SetTensorLayout(TensorLayout.NHWC)           // MoveNet expects NHWC
+            .SetChannelSwizzle(ChannelSwizzle.BGRA);      // Unity → RGB
+
+        // Convert texture → GPU tensor (values [0..1])
+        var tGpu = TextureConverter.ToTensor(texture, tt);
+
+        // Read back to CPU, scale to [0..255] as MoveNet expects
+        using var tCpu = (Tensor<float>)tGpu.ReadbackAndClone();
+        tGpu.Dispose();
+
+        var data = tCpu.DownloadToArray();
+        for (int i = 0; i < data.Length; i++)
+            data[i] *= 255f;   // scale up
+
+        // Create new CPU tensor with scaled values
+        var scaled = new Tensor<float>(tCpu.shape, data);
+        return scaled;
     }
+
     
     #endregion
     

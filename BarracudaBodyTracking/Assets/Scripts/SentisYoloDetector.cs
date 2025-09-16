@@ -60,7 +60,7 @@ public class SentisYOLODetector : MonoBehaviour
         Rect? human = DetectHuman(output);
 
         //PrintHumanDetection(output);
-        //DrawHumanBox(human);
+        DrawHumanBox(human);
         
         if (human.HasValue)
         {
@@ -206,7 +206,9 @@ public class SentisYOLODetector : MonoBehaviour
     }
 
     
-    private void CropAndStore(Texture source, Rect humanBox)
+    public Rect LastCropRect { get; private set; }  // normalized [0..1] in source image
+    
+private void CropAndStore(Texture source, Rect humanBox)
 {
     // Expand YOLO box by 20% in both directions
     float expandFactor = 0.2f;
@@ -229,7 +231,6 @@ public class SentisYOLODetector : MonoBehaviour
 
     // Maintain aspect ratio: choose the larger side and make square crop
     int side = Mathf.Max(pw, ph);
-    // expand crop region to a square, centered on original box
     int cx = px + pw / 2;
     int cy = py + ph / 2;
     px = Mathf.Clamp(cx - side / 2, 0, source.width - side);
@@ -237,13 +238,21 @@ public class SentisYOLODetector : MonoBehaviour
     pw = Mathf.Min(side, source.width - px);
     ph = Mathf.Min(side, source.height - py);
 
+    // 👉 Save normalized crop rect so MoveNet can undo stretching
+    LastCropRect = new Rect(
+        (float)px / source.width,
+        (float)py / source.height,
+        (float)pw / source.width,
+        (float)ph / source.height
+    );
+
     // Lazy-init RT
-    if (CroppedTexture == null || CroppedTexture.width != cropSize || CroppedTexture.height != cropSize)
+    if (!CroppedTexture || CroppedTexture.width != cropSize || CroppedTexture.height != cropSize)
     {
         CroppedTexture = new RenderTexture(cropSize, cropSize, 0, RenderTextureFormat.ARGB32);
     }
 
-    // Copy square region from source → CroppedTexture (scaled down to cropSize)
+    // Copy square region from source → CroppedTexture
     RenderTexture.active = CroppedTexture;
     GL.PushMatrix();
     GL.LoadPixelMatrix(0, cropSize, cropSize, 0);

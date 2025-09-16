@@ -43,12 +43,22 @@ public class MovenetPoseProcessor3D : MonoBehaviour
     /// </summary>
     public void UploadNetworkOutputs(float[] keypoints2D)
     {
-        // 1) Parse COCO 2D
-        Vector2[] coco = new Vector2[17];
+        //keypoints is the raw MoveNet [1,1,17,3] tensor = (y, x, score) in normalized [0,1] coords.
+        // 1) Parse COCO 2D. MoveNet is trained on COCO-17 keypoints
+        // MoveNet format: (y, x, score)
+        Vector3[] coco = new Vector3[17];
         for (int j = 0; j < 17; j++)
-            coco[j] = new Vector2(keypoints2D[j*3+0], keypoints2D[j*3+1]);
+        {
+            float y = keypoints2D[j * 3 + 0]; //row
+            float x = keypoints2D[j * 3 + 1];//col
+            float c = keypoints2D[j * 3 + 2];
+            coco[j] = new Vector3(x, y, c);
+        }
 
-        // 2) Build H36M-17 from COCO (adds pelvis/spine/thorax/neck midpoints)
+        // Send full (x,y,conf) to visualizer
+        coco2DVisualizer.SetKeypoints(coco);
+        
+        /*/ 2) Build H36M-17 from COCO (adds pelvis/spine/thorax/neck midpoints)
         Vector2[] h36m = BuildH36MFromCOCO(coco);
 
         // Optional one-time sanity print
@@ -68,13 +78,12 @@ public class MovenetPoseProcessor3D : MonoBehaviour
         {
             flat[j*2+0] = h36m[j].x - root.x;
             flat[j*2+1] = h36m[j].y - root.y;
-        }
+        }*/
 
-        // Visualize raw MoveNet 2D
-        coco2DVisualizer.SetKeypoints(keypoints2D);
+        
         return;
         
-        using var liftIn = new Tensor<float>(new TensorShape(1, flat.Length), flat);
+        /*using var liftIn = new Tensor<float>(new TensorShape(1, flat.Length), flat);
 
         // 4) Lift to 3D
         baselineWorker.SetInput(baselineModel.inputs[0].name, liftIn);
@@ -99,6 +108,7 @@ public class MovenetPoseProcessor3D : MonoBehaviour
 
         // 7) Drive skeleton (expects H36M order)
         skeleton.UpdatePose(joints3D);
+        */
     }
 
     /// <summary>
