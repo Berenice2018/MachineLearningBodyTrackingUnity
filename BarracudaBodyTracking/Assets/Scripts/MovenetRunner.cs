@@ -109,25 +109,30 @@ public class MovenetRunner : MonoBehaviour
             Debug.LogError($"Failed to initialize network system: {e.Message}");
         }
     }
-    
     private void InitializeModel()
     {
-        if (modelAsset == null)
-            throw new ArgumentNullException(nameof(modelAsset), "Model asset is not assigned");
-        
-        _model = ModelLoader.Load(modelAsset);
+        if (modelAsset == null) throw new ArgumentNullException(nameof(modelAsset));
+
+        var baseModel = ModelLoader.Load(modelAsset);
+
+        // Build a small functional graph: input -> ( * 255 ) -> baseModel -> outputs
+        var graph  = new FunctionalGraph();
+        var inputs = graph.AddInputs(baseModel);
+
+        // Scale to [0..255]
+        FunctionalTensor scaledInput = inputs[0] * 255f;  // operator overload in Sentis 2
+
+        // Forward through original model with the scaled input
+        var outputs = Functional.Forward(baseModel, new[] { scaledInput });
+
+        // Compile the edited model (do this once; can serialize if you want)
+        _model = graph.Compile(outputs);
         _worker = new Worker(_model, backendType);
-        
-        // MoveNet has a single input
         _inputName = _model.inputs[0].name;
-        
-        if (verbose)
-        {
-            Debug.Log($"Model loaded with backend: {backendType}");
-            LogModelInfo();
-        }
+
+        if (verbose) LogModelInfo();
     }
-    
+
     private void InitializeInputTensors()
     {
         _inputTensors = new Dictionary<string, Tensor<float>>();
@@ -232,8 +237,8 @@ public class MovenetRunner : MonoBehaviour
                 remapped[i * 3 + 1] = realX;
                 remapped[i * 3 + 2] = conf;
 
-                if (verbose && i < 5)  // only log first 5 for debug
-                    Debug.Log($"[Joint {i}] x={realX:F3}, y={realY:F3}, conf={conf:F2}");
+                //if (verbose && i < 5)  // only log first 5 for debug
+                  //  Debug.Log($"[Joint {i}] x={realX:F3}, y={realY:F3}, conf={conf:F2}");
             }
 
             // Send remapped keypoints into pose processor
@@ -275,8 +280,6 @@ public class MovenetRunner : MonoBehaviour
         tGpu.Dispose();
 
         var data = tCpu.DownloadToArray();
-        for (int i = 0; i < data.Length; i++)
-            data[i] *= 255f;   // scale up
 
         // Create new CPU tensor with scaled values
         var scaled = new Tensor<float>(tCpu.shape, data);

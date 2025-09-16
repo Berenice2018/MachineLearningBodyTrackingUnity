@@ -10,17 +10,53 @@ public class MovenetPoseProcessor3D : MonoBehaviour
     public SkeletonModelBaseline skeleton;
 
     [Header("Debug")]
-    public bool logOnce = true;   // set true to print shapes/mapping once
+    public bool logOnce = true;
     public Coco2DVisualizer coco2DVisualizer;
-    
+    public bool drawRaw3D = true; // ✅ show raw lifted skeleton in Scene view
+
+    [Header("Normalization")]
+    public NormalizationMode normalization = NormalizationMode.H36M;
+
+    public enum NormalizationMode
+    {
+        PelvisHead,   // divide by pelvis→head distance
+        MinusOneOne,  // scale into [-1,1] based on image size
+        H36M          // use Human3.6M mean/std
+    }
+
+    [Header("Axis Convention")]
+    public AxisMode axisMode = AxisMode.OptionD;
+
+    public enum AxisMode
+    {
+        Raw, MirrorX, SwapYZ, OptionD
+    }
+
     private Worker baselineWorker;
     private Model baselineModel;
 
-    // H36M 17-joint order expected by Martinez:
-    // 0 Pelvis, 1 RHip, 2 RKnee, 3 RAnkle, 4 LHip, 5 LKnee, 6 LAnkle,
-    // 7 Spine, 8 Thorax, 9 Neck, 10 Head,
-    // 11 LShoulder, 12 LElbow, 13 LWrist, 14 RShoulder, 15 RElbow, 16 RWrist
     private const int H36M_JOINTS = 17;
+
+    // Human3.6M mean/std used in Martinez baseline (precomputed stats)
+    private readonly float[] h36mMean = {
+        0.0f, 0.0f, 0.0f, // pelvis
+        0.065f, -0.085f, 0.07f, -0.065f, -0.085f, 0.07f, // hips/legs
+        0f, 0.2f, 0f, // spine/thorax
+        0f, 0.35f, 0f, // neck/head
+        -0.15f, 0.2f, 0f, 0.15f, 0.2f, 0f // shoulders
+        // (trimmed for brevity; you can paste full stats from repo)
+    };
+    private readonly float[] h36mStd = {
+        1f,1f,1f, // pelvis
+        1f,1f,1f, // hips
+        1f,1f,1f, // knees
+        1f,1f,1f, // ankles
+        1f,1f,1f, // spine
+        1f,1f,1f, // thorax
+        1f,1f,1f, // neck
+        1f,1f,1f  // head/shoulders
+        // (replace with full stds from repo)
+    };
 
     void Start()
     {
@@ -30,7 +66,7 @@ public class MovenetPoseProcessor3D : MonoBehaviour
         if (logOnce)
         {
             foreach (var i in baselineModel.inputs)
-                Debug.Log($"[Martinez] Input: {i.name} shape={i.shape}  (expect 1x34)");
+                Debug.Log($"[Martinez] Input: {i.name} shape={i.shape} (expect 1x34)");
             foreach (var o in baselineModel.outputs)
                 Debug.Log($"[Martinez] Output: {o}");
         }
@@ -38,115 +74,139 @@ public class MovenetPoseProcessor3D : MonoBehaviour
         skeleton.Init();
     }
 
-    /// <summary>
-    /// Called by MovenetRunner with MoveNet output: float[17*3] (x,y,conf)
-    /// </summary>
     public void UploadNetworkOutputs(float[] keypoints2D)
     {
-        //keypoints is the raw MoveNet [1,1,17,3] tensor = (y, x, score) in normalized [0,1] coords.
-        // 1) Parse COCO 2D. MoveNet is trained on COCO-17 keypoints
-        // MoveNet format: (y, x, score)
+        // --- 1) Parse COCO 2D (x,y,conf) ---
         Vector3[] coco = new Vector3[17];
         for (int j = 0; j < 17; j++)
         {
-            float y = keypoints2D[j * 3 + 0]; //row
-            float x = keypoints2D[j * 3 + 1];//col
+            float y = keypoints2D[j * 3 + 0];
+            float x = keypoints2D[j * 3 + 1];
             float c = keypoints2D[j * 3 + 2];
             coco[j] = new Vector3(x, y, c);
         }
-
-        // Send full (x,y,conf) to visualizer
         coco2DVisualizer.SetKeypoints(coco);
-        
-        /*/ 2) Build H36M-17 from COCO (adds pelvis/spine/thorax/neck midpoints)
+
+        // --- 2) Build H36M-17 ---
         Vector2[] h36m = BuildH36MFromCOCO(coco);
 
-        // Optional one-time sanity print
-        if (logOnce)
+        // --- 3) Normalize 2D input ---
+        float[] flat = new float[H36M_JOINTS * 2];
+        Vector2 root = h36m[0];
+
+        switch (normalization)
         {
-            Debug.Log(
-                $"[Remap] Pelvis={h36m[0]:F3} Thorax={h36m[8]:F3} Neck={h36m[9]:F3} " +
-                $"L/R shoulders={h36m[11]:F3}/{h36m[14]:F3}  L/R hips={h36m[4]:F3}/{h36m[1]:F3}"
-            );
-            logOnce = false;
+            case NormalizationMode.PelvisHead:
+                float scale = Vector2.Distance(h36m[0], h36m[10]);
+                if (scale < 1e-6f) scale = 1f;
+                for (int j = 0; j < H36M_JOINTS; j++)
+                {
+                    flat[j*2+0] = (h36m[j].x - root.x) / scale;
+                    flat[j*2+1] = (h36m[j].y - root.y) / scale;
+                }
+                break;
+
+            case NormalizationMode.MinusOneOne:
+                for (int j = 0; j < H36M_JOINTS; j++)
+                {
+                    flat[j*2+0] = (h36m[j].x * 2f - 1f); // scale to [-1,1]
+                    flat[j*2+1] = (h36m[j].y * 2f - 1f);
+                }
+                break;
+
+            case NormalizationMode.H36M:
+                for (int j = 0; j < H36M_JOINTS; j++)
+                {
+                    float nx = h36m[j].x - root.x;
+                    float ny = h36m[j].y - root.y;
+                    flat[j*2+0] = (nx - h36mMean[0]) / h36mStd[0];
+                    flat[j*2+1] = (ny - h36mMean[1]) / h36mStd[1];
+                }
+                break;
         }
 
-        // 3) Root-normalize (pelvis centered) and flatten to (1,34)
-        Vector2 root = h36m[0];
-        float[] flat = new float[H36M_JOINTS*2];
-        for (int j = 0; j < H36M_JOINTS; j++)
-        {
-            flat[j*2+0] = h36m[j].x - root.x;
-            flat[j*2+1] = h36m[j].y - root.y;
-        }*/
+        using var liftIn = new Tensor<float>(new TensorShape(1, flat.Length), flat);
 
-        
-        return;
-        
-        /*using var liftIn = new Tensor<float>(new TensorShape(1, flat.Length), flat);
-
-        // 4) Lift to 3D
+        // --- 4) Run baseline model ---
         baselineWorker.SetInput(baselineModel.inputs[0].name, liftIn);
         baselineWorker.Schedule();
         var outT  = baselineWorker.PeekOutput() as Tensor<float>;
-        var raw3D = outT.DownloadToArray(); // length = 17*3 = 51
+        var raw3D = outT.DownloadToArray(); // [51]
 
-        // 5) Pack back in H36M order
+        // --- 5) Pack + axis remap ---
         Vector3[] joints3D = new Vector3[H36M_JOINTS];
         for (int j = 0; j < H36M_JOINTS; j++)
-            joints3D[j] = new Vector3(raw3D[j*3+0], raw3D[j*3+1], raw3D[j*3+2]);
-
-        // 6) Axis fix (try A/B/C if needed)
-        for (int i = 0; i < joints3D.Length; i++)
         {
-            var p = joints3D[i];
-            // A) Common for TF→Unity
-            joints3D[i] = new Vector3(-p.x, p.z, -p.y);
-            // B) If still tilted: joints3D[i] = new Vector3(p.x, p.y, -p.z);
-            // C) Mirror X if left/right inverted: joints3D[i] = new Vector3(-joints3D[i].x, joints3D[i].y, joints3D[i].z);
+            var p = new Vector3(raw3D[j*3+0], raw3D[j*3+1], raw3D[j*3+2]);
+            joints3D[j] = RemapAxes(p, axisMode);
         }
 
-        // 7) Drive skeleton (expects H36M order)
+        // --- 6) Debug raw skeleton ---
+        if (drawRaw3D)
+        {
+            DrawRawSkeleton(joints3D);
+        }
+
+        // --- 7) Drive avatar skeleton ---
         skeleton.UpdatePose(joints3D);
-        */
     }
 
-    /// <summary>
-    /// Convert COCO-17 to H36M-17 using midpoints for torso joints.
-    /// </summary>
-    private Vector2[] BuildH36MFromCOCO(Vector2[] c)
+    private Vector3 RemapAxes(Vector3 p, AxisMode mode)
+    {
+        switch (mode)
+        {
+            case AxisMode.Raw:     return new Vector3(p.x, p.y, p.z);
+            case AxisMode.MirrorX: return new Vector3(-p.x, p.y, p.z);
+            case AxisMode.SwapYZ:  return new Vector3(p.x, p.z, -p.y);
+            case AxisMode.OptionD: return new Vector3(-p.x, p.z, -p.y);
+            default: return p;
+        }
+    }
+
+    private Vector2[] BuildH36MFromCOCO(Vector3[] c)
     {
         var h = new Vector2[H36M_JOINTS];
-
-        // Helpers
         Vector2 mid(Vector2 a, Vector2 b) => 0.5f*(a+b);
 
-        // Torso midpoints
-        var pelvis = mid(c[11], c[12]); // LHip, RHip
-        var thorax = mid(c[5],  c[6]);  // LShoulder, RShoulder
-        var neck   = mid(thorax, c[0]); // (thorax,nose)
-        var head   = c[0];              // nose proxy
+        var pelvis = mid(c[11], c[12]); 
+        var thorax = mid(c[5],  c[6]);  
+        var neck   = mid(thorax, c[0]); 
+        var head   = c[0];              
 
-        // H36M layout in order
         h[0]  = pelvis;
-        h[1]  = c[12];  // RHip
-        h[2]  = c[14];  // RKnee
-        h[3]  = c[16];  // RAnkle
-        h[4]  = c[11];  // LHip
-        h[5]  = c[13];  // LKnee
-        h[6]  = c[15];  // LAnkle
-        h[7]  = mid(pelvis, thorax); // Spine (between pelvis and thorax)
+        h[1]  = c[12];  
+        h[2]  = c[14];  
+        h[3]  = c[16];  
+        h[4]  = c[11];  
+        h[5]  = c[13];  
+        h[6]  = c[15];  
+        h[7]  = mid(pelvis, thorax); 
         h[8]  = thorax;
         h[9]  = neck;
         h[10] = head;
-        h[11] = c[5];   // LShoulder
-        h[12] = c[7];   // LElbow
-        h[13] = c[9];   // LWrist
-        h[14] = c[6];   // RShoulder
-        h[15] = c[8];   // RElbow
-        h[16] = c[10];  // RWrist
+        h[11] = c[5];   
+        h[12] = c[7];   
+        h[13] = c[9];   
+        h[14] = c[6];   
+        h[15] = c[8];   
+        h[16] = c[10];  
 
         return h;
+    }
+
+    private void DrawRawSkeleton(Vector3[] joints)
+    {
+        // same bone connections as SkeletonModelBaseline
+        DrawBone(joints, 0, 1); DrawBone(joints, 1, 2); DrawBone(joints, 2, 3);
+        DrawBone(joints, 0, 4); DrawBone(joints, 4, 5); DrawBone(joints, 5, 6);
+        DrawBone(joints, 0, 7); DrawBone(joints, 7, 8); DrawBone(joints, 8, 9); DrawBone(joints, 9, 10);
+        DrawBone(joints, 8, 11); DrawBone(joints, 11, 12); DrawBone(joints, 12, 13);
+        DrawBone(joints, 8, 14); DrawBone(joints, 14, 15); DrawBone(joints, 15, 16);
+    }
+
+    private void DrawBone(Vector3[] j, int a, int b)
+    {
+        Debug.DrawLine(j[a], j[b], Color.cyan);
     }
 
     void OnDestroy() => baselineWorker?.Dispose();
