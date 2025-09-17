@@ -4,6 +4,13 @@ using Unity.Sentis;
 using System.Collections;
 using System.Collections.Generic;
 using System;
+/*
+   * Switch to horse later
+     Train/plug a horse 2D detector (e.g., 21 joints).
+     (If you have a horse lifter) set lifterDef = Horse-21, useLifter = true.
+     If you don’t have a horse lifter, set useLifter = false and implement depth projection in DepthProjectStub.
+     Swap the driver to HorseSkeletonDriver and assign its bone transforms.
+   */
 
 /// <summary>
 /// MoveNet Lightning v3 runner using Unity Sentis
@@ -37,9 +44,9 @@ public class MovenetRunner : MonoBehaviour
     [Tooltip("Initial image for model warm-up")]
     public Texture2D initImage;
 
-    [SerializeField] private MovenetPoseProcessor3D _poseProcessor;
+    [SerializeField] private PoseProcessorAgnostic _poseProcessor;
     #endregion
-    
+  
     #region Input/Output Configuration
     
     [Header("Input Configuration")]
@@ -242,12 +249,14 @@ public class MovenetRunner : MonoBehaviour
             }
 
             // Send remapped keypoints into pose processor
-            _poseProcessor.UploadNetworkOutputs(remapped);
+            //old _poseProcessor.UploadNetworkOutputs(remapped);
+            _poseProcessor.Upload2DFromDetector(data); // float[] length = N*3, (y,x,conf)
+
         }
         else
         {
             // fallback: just upload raw (square-space) keypoints
-            _poseProcessor.UploadNetworkOutputs(data);
+            _poseProcessor.Upload2DFromDetector(data);
         }
     }
 

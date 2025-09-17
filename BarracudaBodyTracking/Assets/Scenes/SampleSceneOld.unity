@@ -195,6 +195,81 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 52423685}
   m_CullTransparentMesh: 1
+--- !u!1 &92433102
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 92433104}
+  - component: {fileID: 92433105}
+  - component: {fileID: 92433106}
+  m_Layer: 0
+  m_Name: SentisRunner
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!4 &92433104
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 92433102}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.29688254, y: -0.16434696, z: 8.136719}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &92433105
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 92433102}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 379144f4e6dd943cba2a96924f04882c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  modelAsset: {fileID: 5022602860645237092, guid: 5a2831596f2c2436c83bb8e0c8f524e2,
+    type: 3}
+  backendType: 256
+  verbose: 1
+  videoCapture: {fileID: 1848773650}
+  yolo: {fileID: 1982916436}
+  initImage: {fileID: 2800000, guid: ad05e7fc23ec7df40acf63ce37cc522f, type: 3}
+  _poseProcessor: {fileID: 92433106}
+  inputImageSize: 448
+  waitTimeModelLoad: 5
+--- !u!114 &92433106
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 92433102}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fdd21fc7fffa6485daa97b4e4e6169b7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  skeletonModel: {fileID: 1034608948}
+  heatMapCol: 28
+  inputImageSize: 448
+  useBurstJobs: 1
+  kalmanParamQ: 0.001
+  kalmanParamR: 0.0015
+  useLowPassFilter: 0
+  lowPassParam: 0.1
 --- !u!1 &116302815
 GameObject:
   m_ObjectHideFlags: 0
@@ -1597,8 +1672,9 @@ GameObject:
   m_Component:
   - component: {fileID: 1788672119}
   - component: {fileID: 1788672118}
+  - component: {fileID: 1788672120}
+  - component: {fileID: 1788672121}
   - component: {fileID: 1788672122}
-  - component: {fileID: 1788672123}
   m_Layer: 0
   m_Name: MovenetRunner
   m_TagString: Untagged
@@ -1643,6 +1719,47 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1788672120
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1788672116}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c52393b639d1e486d85258b1979fc834, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  baseline3DModelAsset: {fileID: 5022602860645237092, guid: b3317622e6019409bb1a3fa0310268a5,
+    type: 3}
+  skeleton: {fileID: 1034608949}
+  logOnce: 1
+  coco2DVisualizer: {fileID: 1788672121}
+  drawRaw3D: 1
+  normalization: 0
+  axisMode: 0
+--- !u!114 &1788672121
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1788672116}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0dedde615ebd64ed6839af6b213c4c51, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  canvasRect: {fileID: 1333606566}
+  pointPrefab: {fileID: 7475805871736140009, guid: da34a1e5cf1f94296809ceb7ef5ff7bd,
+    type: 3}
+  linePrefab: {fileID: 7768456137704465802, guid: 1d08dd398e05a4a3a91757c54deecb50,
+    type: 3}
+  confidenceThreshold: 0.3
+  inputResolution: 192
+  targetWidth: 200
+  targetHeight: 200
 --- !u!114 &1788672122
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1659,32 +1776,11 @@ MonoBehaviour:
   lifterDef: {fileID: 11400000, guid: 9c9d1021a0b6a44a7863e9bd2690aa95, type: 2}
   driver: {fileID: 1034608951}
   lifterModelAsset: {fileID: 0}
-  useLifter: 0
+  useLifter: 1
   axis: 3
   norm: 0
-  drawRaw3D: 0
-  skeleton2DVisualizer: {fileID: 1788672123}
---- !u!114 &1788672123
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1788672116}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5ab80dfb51e1747dda8fd4a927494687, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  canvasRect: {fileID: 1333606566}
-  pointPrefab: {fileID: 7475805871736140009, guid: da34a1e5cf1f94296809ceb7ef5ff7bd,
-    type: 3}
-  linePrefab: {fileID: 7768456137704465802, guid: 1d08dd398e05a4a3a91757c54deecb50,
-    type: 3}
-  confidenceThreshold: 0.3
-  targetWidth: 200
-  targetHeight: 200
-  flipY: 1
+  drawRaw3D: 1
+  coco2DVisualizer: {fileID: 1788672121}
 --- !u!1 &1848773649
 GameObject:
   m_ObjectHideFlags: 0
@@ -1877,6 +1973,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1982916434}
   - component: {fileID: 1982916436}
+  - component: {fileID: 1982916437}
   m_Layer: 0
   m_Name: YoloRunner
   m_TagString: Untagged
@@ -1920,6 +2017,30 @@ MonoBehaviour:
     type: 3}
   overlayCanvas: {fileID: 1991036632}
   cropSize: 192
+--- !u!114 &1982916437
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1982916432}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1e3f43033908a4143a048cc7592f7170, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  modelAsset: {fileID: 5022602860645237092, guid: 5057b4c85441f4b23ba706365ad139a1,
+    type: 3}
+  backendType: 256
+  inputImageSize: 640
+  videoCapture: {fileID: 1848773650}
+  keypointPrefab: {fileID: 7604971748605472283, guid: da34a1e5cf1f94296809ceb7ef5ff7bd,
+    type: 3}
+  overlayCanvas: {fileID: 1991036632}
+  lineUiPrefab: {fileID: 2101908138103521455, guid: ae82c7f4f035e4bfbb4667bd52a7cf2e,
+    type: 3}
+  linePrefab: {fileID: 4395887154396756611, guid: 373833412c7fd4b528f91db0a99d0fea,
+    type: 3}
 --- !u!1 &1991036631
 GameObject:
   m_ObjectHideFlags: 0
@@ -2433,6 +2554,7 @@ SceneRoots:
   - {fileID: 705507995}
   - {fileID: 1064655614}
   - {fileID: 1982916434}
+  - {fileID: 92433104}
   - {fileID: 1788672119}
   - {fileID: 1848773653}
   - {fileID: 116302817}

@@ -47,18 +47,25 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets/Scripts/MovenetRunner.cs" />
-    <Compile Include="Assets/Scripts/SkeletonModel.cs" />
+    <Compile Include="Assets/Scripts/other/SentisRunner.cs" />
+    <Compile Include="Assets/Scripts/other/CameraMover.cs" />
     <Compile Include="Assets/Scripts/Coco2DVisualizer.cs" />
     <Compile Include="Assets/Scripts/SkeletonModelBaseline.cs" />
+    <Compile Include="Assets/Scripts/other/SkeletonModel.cs" />
     <Compile Include="Assets/Scripts/MovenetPoseProcessor3D.cs" />
-    <Compile Include="Assets/Scripts/SentisRunner.cs" />
+    <Compile Include="Assets/ScriptableObjects/SkeletonDefinition.cs" />
+    <Compile Include="Assets/Scripts/Agnostic/SkeletonDriverBase.cs" />
+    <Compile Include="Assets/Scripts/Agnostic/Skeleton2DVisualizer.cs" />
+    <Compile Include="Assets/Scripts/Agnostic/PoseProcessorAgnostic.cs" />
+    <Compile Include="Assets/Scripts/other/MovenetPoseProcessor.cs" />
+    <Compile Include="Assets/Scripts/Agnostic/JointMapper.cs" />
     <Compile Include="Assets/Scripts/SentisYoloPoseDetector.cs" />
-    <Compile Include="Assets/Scripts/PoseProcessor.cs" />
+    <Compile Include="Assets/Scripts/Agnostic/HorseSkeletonDriver.cs" />
     <Compile Include="Assets/Scripts/SentisYoloDetector.cs" />
-    <Compile Include="Assets/Scripts/CameraMover.cs" />
+    <Compile Include="Assets/Scripts/Agnostic/HumanSkeletonDriver.cs" />
     <Compile Include="Assets/Scripts/VideoCapture.cs" />
-    <Compile Include="Assets/Scripts/MovenetPoseProcessor.cs" />
-    <Compile Include="Assets/Scripts/info.cs" />
+    <Compile Include="Assets/Scripts/other/PoseProcessor.cs" />
+    <Compile Include="Assets/Scripts/other/info.cs" />
     <None Include="Assets/TextMesh Pro/Shaders/TMPro.cginc" />
     <None Include="Assets/TextMesh Pro/Shaders/TMP_SDF-Mobile Overlay.shader" />
     <None Include="Assets/TextMesh Pro/Shaders/TMP_SDF-Mobile-2-Pass.shader" />
