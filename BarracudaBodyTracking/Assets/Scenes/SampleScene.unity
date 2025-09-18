@@ -730,12 +730,12 @@ PrefabInstance:
     - target: {fileID: 700150240454407267, guid: a9c417137d3965745b6459ee29ace6f2,
         type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 1779665064462175557, guid: a9c417137d3965745b6459ee29ace6f2,
         type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1919840562988403317, guid: a9c417137d3965745b6459ee29ace6f2,
         type: 3}
@@ -823,14 +823,6 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 700150240454407267, guid: a9c417137d3965745b6459ee29ace6f2,
         type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1034608948}
-    - targetCorrespondingSourceObject: {fileID: 700150240454407267, guid: a9c417137d3965745b6459ee29ace6f2,
-        type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1034608949}
-    - targetCorrespondingSourceObject: {fileID: 700150240454407267, guid: a9c417137d3965745b6459ee29ace6f2,
-        type: 3}
-      insertIndex: -1
       addedObject: {fileID: 1034608951}
   m_SourcePrefab: {fileID: 100100000, guid: a9c417137d3965745b6459ee29ace6f2, type: 3}
 --- !u!1 &1034608946 stripped
@@ -845,43 +837,6 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 1034608945}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &1034608948
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1034608946}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3558338e378282c4a91d1a3356b57301, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  SkeletonMaterial: {fileID: 2100000, guid: f8188c9479a7aad41b7448fe5eeed839, type: 2}
-  ShowSkeleton: 1
-  SkeletonX: -1
-  SkeletonY: 0.9
-  SkeletonZ: 0
-  SkeletonScale: 0.01
-  ModelObject: {fileID: 1034608946}
-  Nose: {fileID: 1242464908}
-  ZScale: 1
---- !u!114 &1034608949
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1034608946}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: dcf1f9bf2d1954d089fc326d9af18daf, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  ModelObject: {fileID: 1034608946}
-  ShowSkeleton: 1
-  SkeletonScale: 1
-  scale: 3
 --- !u!95 &1034608950 stripped
 Animator:
   m_CorrespondingSourceObject: {fileID: 5493691456806647245, guid: a9c417137d3965745b6459ee29ace6f2,
@@ -901,8 +856,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   showSkeleton: 1
-  gizmoScale: 1
-  metersScale: 0.01
+  gizmoScale: 10
+  metersScale: 0.1
   animator: {fileID: 1034608950}
 --- !u!1 &1064655611
 GameObject:
@@ -1658,10 +1613,14 @@ MonoBehaviour:
   detectorDef: {fileID: 11400000, guid: d48e7dfe4ad6645fd8cb47cb9e17dc74, type: 2}
   lifterDef: {fileID: 11400000, guid: 9c9d1021a0b6a44a7863e9bd2690aa95, type: 2}
   driver: {fileID: 1034608951}
-  lifterModelAsset: {fileID: 0}
-  useLifter: 0
-  axis: 3
+  lifterModelAsset: {fileID: 5022602860645237092, guid: 4025f01944c1c477a9e7b6dbe94b39ae,
+    type: 3}
+  useLifter: 1
+  imgSizeLifter: 192
+  windowSize: 243
+  axis: 0
   norm: 0
+  enable2DOverlay: 1
   drawRaw3D: 0
   skeleton2DVisualizer: {fileID: 1788672123}
 --- !u!114 &1788672123
@@ -2432,10 +2391,10 @@ SceneRoots:
   - {fileID: 963194228}
   - {fileID: 705507995}
   - {fileID: 1064655614}
-  - {fileID: 1982916434}
-  - {fileID: 1788672119}
   - {fileID: 1848773653}
   - {fileID: 116302817}
+  - {fileID: 1982916434}
+  - {fileID: 1788672119}
   - {fileID: 1034608945}
   - {fileID: 2088002670}
   - {fileID: 8365237956945987675}

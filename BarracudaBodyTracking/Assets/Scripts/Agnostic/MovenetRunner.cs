@@ -249,7 +249,6 @@ public class MovenetRunner : MonoBehaviour
             }
 
             // Send remapped keypoints into pose processor
-            //old _poseProcessor.UploadNetworkOutputs(remapped);
             _poseProcessor.Upload2DFromDetector(data); // float[] length = N*3, (y,x,conf)
 
         }
@@ -283,6 +282,7 @@ public class MovenetRunner : MonoBehaviour
 
         // Convert texture → GPU tensor (values [0..1])
         var tGpu = TextureConverter.ToTensor(texture, tt);
+        return tGpu;
 
         // Read back to CPU, scale to [0..255] as MoveNet expects
         using var tCpu = (Tensor<float>)tGpu.ReadbackAndClone();

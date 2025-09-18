@@ -27,7 +27,7 @@ public abstract class SkeletonDriverBase : MonoBehaviour
             if (bp.x < 0 || bp.x >= jointsLocal.Length || bp.y < 0 || bp.y >= jointsLocal.Length) continue;
             var a = transform.TransformPoint(jointsLocal[bp.x] * gizmoScale);
             var b = transform.TransformPoint(jointsLocal[bp.y] * gizmoScale);
-            Debug.DrawLine(a, b, Color.cyan);
+            Debug.DrawLine(a, b, Color.red);
         }
     }
 }

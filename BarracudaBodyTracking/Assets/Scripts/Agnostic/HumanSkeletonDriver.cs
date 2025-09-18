@@ -55,7 +55,7 @@ public class HumanSkeletonDriver : SkeletonDriverBase
 
     public override void UpdatePose(Vector3[] joints3D)
     {
-        if (definition == null || joints3D == null || joints3D.Length != definition.NumJoints) return;
+        if (!definition || joints3D == null || joints3D.Length != definition.NumJoints) return;
 
         // Convert to local units
         var J = new Vector3[joints3D.Length];

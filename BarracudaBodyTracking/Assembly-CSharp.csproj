@@ -46,9 +46,7 @@
     <Analyzer Include="/Applications/Unity/6000.0.34f1/Unity.app/Contents/Tools/Unity.SourceGenerators/Unity.UIToolkit.SourceGenerator.dll" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Assets/Scripts/MovenetRunner.cs" />
     <Compile Include="Assets/Scripts/other/SentisRunner.cs" />
-    <Compile Include="Assets/Scripts/other/CameraMover.cs" />
     <Compile Include="Assets/Scripts/Coco2DVisualizer.cs" />
     <Compile Include="Assets/Scripts/SkeletonModelBaseline.cs" />
     <Compile Include="Assets/Scripts/other/SkeletonModel.cs" />
@@ -56,16 +54,19 @@
     <Compile Include="Assets/ScriptableObjects/SkeletonDefinition.cs" />
     <Compile Include="Assets/Scripts/Agnostic/SkeletonDriverBase.cs" />
     <Compile Include="Assets/Scripts/Agnostic/Skeleton2DVisualizer.cs" />
+    <Compile Include="Assets/Scripts/Agnostic/MovenetRunner.cs" />
     <Compile Include="Assets/Scripts/Agnostic/PoseProcessorAgnostic.cs" />
     <Compile Include="Assets/Scripts/other/MovenetPoseProcessor.cs" />
     <Compile Include="Assets/Scripts/Agnostic/JointMapper.cs" />
-    <Compile Include="Assets/Scripts/SentisYoloPoseDetector.cs" />
     <Compile Include="Assets/Scripts/Agnostic/HorseSkeletonDriver.cs" />
-    <Compile Include="Assets/Scripts/SentisYoloDetector.cs" />
+    <Compile Include="Assets/Scripts/YOLO/SentisYoloDetector.cs" />
+    <Compile Include="Assets/Scripts/YOLO/SentisYoloPoseDetector.cs" />
+    <Compile Include="Assets/Scripts/Agnostic/PoseSlidingBuffer.cs" />
+    <Compile Include="Assets/Scripts/CameraMover.cs" />
     <Compile Include="Assets/Scripts/Agnostic/HumanSkeletonDriver.cs" />
+    <Compile Include="Assets/Scripts/Agnostic/JointMapperCocoH36M.cs" />
     <Compile Include="Assets/Scripts/VideoCapture.cs" />
     <Compile Include="Assets/Scripts/other/PoseProcessor.cs" />
-    <Compile Include="Assets/Scripts/other/info.cs" />
     <None Include="Assets/TextMesh Pro/Shaders/TMPro.cginc" />
     <None Include="Assets/TextMesh Pro/Shaders/TMP_SDF-Mobile Overlay.shader" />
     <None Include="Assets/TextMesh Pro/Shaders/TMP_SDF-Mobile-2-Pass.shader" />
@@ -80,7 +81,7 @@
     <None Include="Assets/TextMesh Pro/Shaders/TMP_SDF.shader" />
     <None Include="Assets/TextMesh Pro/Shaders/TMP_SDF-Mobile SSD.shader" />
     <None Include="Assets/TextMesh Pro/Resources/LineBreaking Leading Characters.txt" />
-    <None Include="Assets/Scripts/Model/AddOnnxHere.txt" />
+    <None Include="Assets/Scripts/MLModels/AddOnnxHere.txt" />
     <None Include="Assets/TextMesh Pro/Shaders/TMPro_Properties.cginc" />
     <None Include="Assets/TextMesh Pro/Shaders/TMPro_Surface.cginc" />
     <None Include="Assets/TextMesh Pro/Resources/LineBreaking Following Characters.txt" />

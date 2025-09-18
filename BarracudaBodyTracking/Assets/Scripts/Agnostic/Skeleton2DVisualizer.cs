@@ -18,34 +18,60 @@ public class Skeleton2DVisualizer : MonoBehaviour
     private RectTransform[] lineMarkers;
 
     private SkeletonDefinition definition;
+    private bool initialized = false;
 
     public void Init(SkeletonDefinition def)
     {
         definition = def;
 
-        // Clean up old markers if re-initialized
+        if (!initialized)
+        {
+            // First-time setup: create markers
+            pointMarkers = new RectTransform[def.NumJoints];
+            for (int i = 0; i < def.NumJoints; i++)
+            {
+                var go = Instantiate(pointPrefab, canvasRect);
+                go.name = $"Point_{def.jointNames[i]}";
+                pointMarkers[i] = go.GetComponent<RectTransform>();
+            }
+
+            lineMarkers = new RectTransform[def.bonePairs.Length];
+            for (int i = 0; i < def.bonePairs.Length; i++)
+            {
+                var go = Instantiate(linePrefab, canvasRect);
+                go.name = $"Bone_{def.bonePairs[i].x}-{def.bonePairs[i].y}";
+                lineMarkers[i] = go.GetComponent<RectTransform>();
+            }
+
+            initialized = true;
+        }
+        else
+        {
+            // Already initialized once → just reuse
+            for (int i = 0; i < pointMarkers.Length; i++)
+                if (pointMarkers[i]) pointMarkers[i].gameObject.SetActive(true);
+
+            for (int i = 0; i < lineMarkers.Length; i++)
+                if (lineMarkers[i]) lineMarkers[i].gameObject.SetActive(true);
+        }
+    }
+
+    /// <summary>
+    /// Hide all markers without destroying them.
+    /// Useful for toggling the overlay off.
+    /// </summary>
+    public void Disable()
+    {
         if (pointMarkers != null)
         {
-            foreach (var p in pointMarkers) if (p) Destroy(p.gameObject);
-            foreach (var l in lineMarkers) if (l) Destroy(l.gameObject);
+            foreach (var p in pointMarkers)
+                if (p) p.gameObject.SetActive(false);
         }
 
-        // Create point markers
-        pointMarkers = new RectTransform[def.NumJoints];
-        for (int i = 0; i < def.NumJoints; i++)
+        if (lineMarkers != null)
         {
-            var go = Instantiate(pointPrefab, canvasRect);
-            go.name = $"Point_{def.jointNames[i]}";
-            pointMarkers[i] = go.GetComponent<RectTransform>();
-        }
-
-        // Create line markers
-        lineMarkers = new RectTransform[def.bonePairs.Length];
-        for (int i = 0; i < def.bonePairs.Length; i++)
-        {
-            var go = Instantiate(linePrefab, canvasRect);
-            go.name = $"Bone_{def.bonePairs[i].x}-{def.bonePairs[i].y}";
-            lineMarkers[i] = go.GetComponent<RectTransform>();
+            foreach (var l in lineMarkers)
+                if (l) l.gameObject.SetActive(false);
         }
     }
 
@@ -54,13 +80,13 @@ public class Skeleton2DVisualizer : MonoBehaviour
     /// </summary>
     public void SetKeypoints(Vector3[] keypoints)
     {
-        if (definition == null || keypoints == null || keypoints.Length != definition.NumJoints)
+        if (!definition || keypoints == null || keypoints.Length != definition.NumJoints)
         {
             Debug.LogWarning("Skeleton2DVisualizer: definition mismatch or missing keypoints.");
             return;
         }
 
-        // Points
+        // Update point markers
         for (int i = 0; i < definition.NumJoints; i++)
         {
             bool visible = keypoints[i].z >= confidenceThreshold;
@@ -71,7 +97,7 @@ public class Skeleton2DVisualizer : MonoBehaviour
             pointMarkers[i].anchoredPosition = pos;
         }
 
-        // Bones
+        // Update bone markers
         for (int e = 0; e < definition.bonePairs.Length; e++)
         {
             int a = definition.bonePairs[e].x;
@@ -102,13 +128,9 @@ public class Skeleton2DVisualizer : MonoBehaviour
         Vector2 diff = end - start;
         float dist = diff.magnitude;
 
-        // Set line size (x = length, y = thickness)
         line.sizeDelta = new Vector2(dist, 2f);
-
-        // Position at midpoint
         line.anchoredPosition = (start + end) * 0.5f;
 
-        // Rotate to angle
         float angle = Mathf.Atan2(diff.y, diff.x) * Mathf.Rad2Deg;
         line.localRotation = Quaternion.Euler(0, 0, angle);
     }
